@@ -1,0 +1,6 @@
+- import_playbook: playbooks/base.yml
+- import_playbook: playbooks/edge.yml
+- import_playbook: playbooks/backend.yml
+- import_playbook: playbooks/data.yml
+- import_playbook: playbooks/ai.yml
+- import_playbook: playbooks/ops.yml

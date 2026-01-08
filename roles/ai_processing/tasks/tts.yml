@@ -1,0 +1,10 @@
+- name: Enable CRB repository
+  command: dnf config-manager --set-enabled crb
+
+- name: Install TTS system dependencies
+  dnf:
+    name:
+      - espeak-ng
+      - sox
+      - portaudio
+    state: present

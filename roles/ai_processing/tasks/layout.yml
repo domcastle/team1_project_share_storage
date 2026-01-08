@@ -1,0 +1,14 @@
+- name: Create AI base directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: "0755"
+  loop:
+    - /opt/ai
+    - /opt/ai/jobs
+    - /opt/ai/audio
+    - /opt/ai/output
+    - /opt/ai/logs
+    - /opt/ai/status

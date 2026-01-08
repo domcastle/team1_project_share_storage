@@ -1,0 +1,22 @@
+- name: Install AI runtime packages
+  dnf:
+    name:
+      - git
+      - curl
+      - wget
+      - unzip
+      - python3
+      - python3-pip
+    state: present
+
+- name: Create AI working directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: "0755"
+  loop:
+    - "{{ ai_base_dir }}"
+    - "{{ ai_jobs_dir }}"
+    - "{{ ai_output_dir }}"

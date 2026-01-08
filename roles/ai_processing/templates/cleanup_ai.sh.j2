@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+AI_BASE="/opt/ai"
+
+AUDIO_DAYS={{ ai_audio_retention_days | default(3) }}
+LOG_DAYS={{ ai_log_retention_days | default(14) }}
+STATUS_DAYS={{ ai_status_retention_days | default(14) }}
+
+echo "[INFO] AI cleanup started at $(date)"
+
+find "${AI_BASE}/audio" -type f -mtime +${AUDIO_DAYS} -print -delete || true
+find "${AI_BASE}/logs"  -type f -mtime +${LOG_DAYS}   -print -delete || true
+find "${AI_BASE}/status" -type f -mtime +${STATUS_DAYS} -print -delete || true
+
+echo "[INFO] AI cleanup finished at $(date)"

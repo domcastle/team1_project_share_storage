@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+############################################
+# 기본 설정
+############################################
+AI_BASE="/opt/ai"
+JOB_DIR="${AI_BASE}/jobs"
+AUDIO_DIR="${AI_BASE}/audio"
+OUTPUT_DIR="${AI_BASE}/output"
+LOG_DIR="${AI_BASE}/logs"
+
+mkdir -p "${AUDIO_DIR}" "${OUTPUT_DIR}" "${LOG_DIR}"
+
+LOG_FILE="${LOG_DIR}/process_$(date +%Y%m%d_%H%M%S).log"
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+echo "[INFO] Starting video processing job"
+
+JOB_ID="$(date +%s)"
+STATUS_FILE="${LOG_DIR}/job_${JOB_ID}.status"
+
+echo "STARTED" > "${STATUS_FILE}"
+
+############################################
+# 인자 파싱
+############################################
+VIDEO=""
+SCRIPT=""
+OUT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --video)
+      VIDEO="$2"
+      shift 2
+      ;;
+    --script)
+      SCRIPT="$2"
+      shift 2
+      ;;
+    --out)
+      OUT="$2"
+      shift 2
+      ;;
+    *)
+      echo "[ERROR] Unknown argument: $1"
+      exit 1
+      ;;
+  esac
+done
+
+############################################
+# 필수 인자 검증
+############################################
+if [[ -z "${VIDEO}" || -z "${SCRIPT}" || -z "${OUT}" ]]; then
+  echo "[ERROR] Missing required arguments"
+  echo "Usage:"
+  echo "  process_video.sh --video <video.mp4> --script <script.txt> --out <output.mp4>"
+  exit 1
+fi
+
+if [[ ! -f "${VIDEO}" ]]; then
+  echo "[ERROR] Video file not found: ${VIDEO}"
+  exit 1
+fi
+
+if [[ ! -f "${SCRIPT}" ]]; then
+  echo "[ERROR] Script file not found: ${SCRIPT}"
+  exit 1
+fi
+
+OUT_DIR="$(dirname "${OUT}")"
+mkdir -p "${OUT_DIR}"
+
+############################################
+# TTS 생성
+############################################
+MAX_RETRY=3
+RETRY_DELAY=2
+RETRY=0
+AUDIO_FILE=""
+
+while [[ "${RETRY}" -lt "${MAX_RETRY}" ]]; do
+  echo "[INFO] TTS attempt $((RETRY+1))/${MAX_RETRY}"
+
+  AUDIO_FILE="$(tts_generate.sh "$(cat "${SCRIPT}")" || true)"
+
+  if [[ -n "${AUDIO_FILE}" && -f "${AUDIO_FILE}" ]]; then
+    echo "[INFO] TTS success: ${AUDIO_FILE}"
+    break
+  fi
+
+  echo "[WARN] TTS failed, retrying..."
+  RETRY=$((RETRY+1))
+  sleep "${RETRY_DELAY}"
+done
+
+if [[ ! -f "${AUDIO_FILE}" ]]; then
+  echo "[ERROR] TTS failed after ${MAX_RETRY} attempts"
+  exit 1
+fi
+
+############################################
+# FFmpeg 처리
+############################################
+FFMPEG_TIMEOUT=300   # 5분
+
+echo "[INFO] Processing video with ffmpeg (timeout=${FFMPEG_TIMEOUT}s)"
+echo "[INFO] Input video : ${VIDEO}"
+echo "[INFO] Input audio : ${AUDIO_FILE}"
+echo "[INFO] Output video: ${OUT}"
+
+timeout "${FFMPEG_TIMEOUT}" \
+ffmpeg -y \
+  -loglevel error \
+  -stats \
+  -i "${VIDEO}" \
+  -i "${AUDIO_FILE}" \
+  -c:v copy \
+  -c:a aac \
+  -shortest \
+  "${OUT}"
+
+
+FFMPEG_RC=$?
+if [[ "${FFMPEG_RC}" -ne 0 ]]; then
+  echo "[ERROR] ffmpeg failed or timed out (rc=${FFMPEG_RC})"
+  exit 1
+fi
+
+if ! timeout "${FFMPEG_TIMEOUT}" ffmpeg ...; then
+  echo "[ERROR] ffmpeg failed or timed out"
+  echo "FAILED_FFMPEG" > "${STATUS_FILE}"
+  exit 1
+fi
+
+
+############################################
+# 결과 검증
+############################################
+if [[ ! -f "${OUT}" ]]; then
+  echo "[ERROR] Output video not created"
+  exit 1
+fi
+
+echo "[INFO] Video processing completed successfully"
+echo "[INFO] Output file: ${OUT}"

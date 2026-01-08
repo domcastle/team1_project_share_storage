@@ -1,0 +1,15 @@
+- name: Deploy AI cleanup script
+  template:
+    src: cleanup_ai.sh.j2
+    dest: /usr/local/bin/cleanup_ai.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Register cron job for AI cleanup
+  cron:
+    name: "AI Processing Cleanup"
+    user: root
+    minute: "0"
+    hour: "3"
+    job: "/usr/local/bin/cleanup_ai.sh >> /var/log/ai_cleanup.log 2>&1"

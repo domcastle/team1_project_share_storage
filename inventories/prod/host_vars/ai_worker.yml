@@ -1,0 +1,3 @@
+ai_base_dir: /opt/ai
+ai_jobs_dir: /opt/ai/jobs
+ai_output_dir: /opt/ai/output

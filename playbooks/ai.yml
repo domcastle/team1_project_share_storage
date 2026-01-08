@@ -1,0 +1,5 @@
+- name: Deploy AI Worker (FFmpeg + TTS)
+  hosts: ai_worker
+  become: true
+  roles:
+    - ai_processing

@@ -1,0 +1,9 @@
+# roles/ai_processing/tasks/main.yml
+
+- import_tasks: layout.yml     # 1️⃣ 디렉터리/권한 (기초)
+- import_tasks: runtime.yml    # 2️⃣ 기본 런타임 패키지
+- import_tasks: ffmpeg.yml     # 3️⃣ FFmpeg
+- import_tasks: tts.yml        # 4️⃣ TTS
+- import_tasks: scripts.yml    # 5️⃣ 실행 스크립트
+- import_tasks: cleanup.yml    # 6️⃣ 정리/cron
+- import_tasks: worker.yml

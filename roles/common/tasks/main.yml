@@ -1,0 +1,89 @@
+---
+########################################
+# 1. 기본 시스템 설정
+########################################
+
+- name: Set timezone to Asia/Seoul
+  command: timedatectl set-timezone Asia/Seoul
+  changed_when: false
+
+- name: Ensure chrony is installed
+  dnf:
+    name: chrony
+    state: present
+
+- name: Enable and start chrony
+  systemd:
+    name: chronyd
+    state: started
+    enabled: true
+
+########################################
+# 2. 필수 패키지 설치
+########################################
+
+- name: Install base packages
+  dnf:
+    name:
+      - vim
+      - git
+      - curl
+      - wget
+      - net-tools
+      - tcpdump
+      - python3
+      - rsync
+    state: present
+
+########################################
+# 3. firewalld 비활성화 (초기 단계)
+########################################
+
+- name: Stop and disable firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+  ignore_errors: true
+
+########################################
+# 4. SELinux (초기 안정화용)
+########################################
+
+- name: Set SELinux to permissive (runtime)
+  command: setenforce 0
+  when: ansible_selinux.status == "enabled"
+  ignore_errors: true
+
+- name: Set SELinux to permissive (config)
+  replace:
+    path: /etc/selinux/config
+    regexp: '^SELINUX='
+    replace: 'SELINUX=permissive'
+  ignore_errors: true
+
+########################################
+# 5. SSH 기본 안정화 (절대 건드리지 말 것)
+########################################
+
+- name: Ensure SSH service is running
+  systemd:
+    name: sshd
+    state: started
+    enabled: true
+
+########################################
+# 6. 기본 디렉토리 구조
+########################################
+
+- name: Create base directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: '0755'
+  loop:
+    - /opt/apps
+    - /opt/scripts
+    - /var/log/apps

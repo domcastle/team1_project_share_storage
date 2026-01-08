@@ -1,0 +1,6 @@
+ai_audio_retention_days: 3
+ai_log_retention_days: 14
+ai_status_retention_days: 14
+redis_host: redis
+redis_port: 6379
+redis_password: "{{ vault_redis_password }}"

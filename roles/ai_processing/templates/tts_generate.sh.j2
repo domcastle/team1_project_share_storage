@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+TEXT="$1"
+OUT="/opt/ai/audio/voice_$(date +%s).wav"
+
+mkdir -p /opt/ai/audio
+espeak-ng "$TEXT" -w "$OUT"
+
+echo "$OUT"

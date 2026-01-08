@@ -1,0 +1,8 @@
+- import_tasks: install.yml
+- import_tasks: config.yml
+
+- name: Enable and start redis
+  systemd:
+    name: redis
+    enabled: yes
+    state: started

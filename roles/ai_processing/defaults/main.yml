@@ -1,0 +1,7 @@
+ai_base_dir: /opt/ai
+ai_jobs_dir: /opt/ai/jobs
+ai_output_dir: /opt/ai/output
+
+redis_host: localhost
+redis_port: 6379
+redis_password: ""

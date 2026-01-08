@@ -1,0 +1,26 @@
+- name: Create script directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: "0755"
+  loop:
+    - /opt/ai/audio
+    - /opt/ai/logs
+
+- name: Deploy video processing script
+  template:
+    src: process_video.sh.j2
+    dest: /usr/local/bin/process_video.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy TTS script
+  template:
+    src: tts_generate.sh.j2
+    dest: /usr/local/bin/tts_generate.sh
+    owner: root
+    group: root
+    mode: "0755"
