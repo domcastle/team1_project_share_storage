@@ -1,0 +1,11 @@
+---
+- name: Reload nginx
+  service:
+    name: nginx
+    state: reloaded
+
+- name: Restart keepalived
+  become: yes
+  systemd:
+    name: keepalived
+    state: restarted

@@ -1,6 +1,0 @@
----
-- name: Build DR Warm Standby Server
-  hosts: dr
-  become: true
-  roles:
-    - dr_warm_standby

@@ -1,0 +1,34 @@
+upstream was_api {
+    # Primary WAS
+    server 172.16.6.53:8000 max_fails=1 fail_timeout=3s;
+
+    # Backup WAS (primary 죽었을 때만 사용)
+    server 172.16.6.54:8000 backup;
+}
+
+server {
+    listen 8000;
+    server_name auth.justic.store;
+
+    access_log /var/log/nginx/auth_access.log;
+    error_log  /var/log/nginx/auth_error.log warn;
+
+    # 🔥 auth 포함 모든 요청을 upstream으로 통일
+    location / {
+        proxy_pass http://was_api;
+
+        # 공통 헤더
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # timeout
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+
+        # upstream 장애 시 backup으로 전환
+        proxy_next_upstream error timeout http_502 http_503 http_504;
+    }
+}

@@ -1,6 +1,0 @@
-- name: Redis Server Setup
-  hosts: redis
-  become: yes
-
-  roles:
-    - redis

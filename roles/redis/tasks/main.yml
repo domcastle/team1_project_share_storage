@@ -1,7 +1,18 @@
-- import_tasks: install.yml
-- import_tasks: config.yml
+- name: Install Redis
+  dnf:
+    name: redis
+    state: present
 
-- name: Enable and start redis
+- name: Configure redis.conf
+  template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+    owner: redis
+    group: redis
+    mode: '0644'
+  notify: restart redis
+
+- name: Enable and start Redis
   systemd:
     name: redis
     enabled: yes

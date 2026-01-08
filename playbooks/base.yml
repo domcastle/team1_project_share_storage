@@ -1,6 +1,0 @@
----
-- name: Base system configuration (all nodes)
-  hosts: all
-  become: true
-  roles:
-    - common

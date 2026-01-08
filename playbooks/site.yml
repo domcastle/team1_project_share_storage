@@ -1,5 +1,5 @@
 ---
-- name: Common baseline
+- name: Common setup
   hosts: all
   become: true
   roles:
@@ -12,31 +12,37 @@
     - redis
 
 - name: PostgreSQL
-  hosts: postgres
+  hosts: storage
   become: true
   roles:
     - postgres
 
-- name: Backend API
-  hosts: api
-  become: true
-  roles:
-    - fastapi
-
-- name: Edge Nginx
-  hosts: edge
+- name: Nginx
+  hosts: web
   become: true
   roles:
     - nginx
 
-- name: AI Worker
+- name: Was
+  hosts: was
+  become: true
+  roles:
+    - was
+
+- name: AI Processing
   hosts: ai_worker
   become: true
   roles:
-    - ai_worker
+    - ai_processing
 
 - name: Monitoring
   hosts: monitoring
   become: true
   roles:
     - monitoring
+
+- name: DR / Backup
+  hosts: dr
+  become: true
+  roles:
+    - dr

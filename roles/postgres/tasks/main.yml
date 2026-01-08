@@ -1,0 +1,31 @@
+---
+- name: Install PostgreSQL
+  dnf:
+    name:
+      - postgresql-server
+      - postgresql-contrib
+    state: present
+
+- name: Initialize DB
+  command: postgresql-setup --initdb
+  args:
+    creates: /var/lib/pgsql/data/PG_VERSION
+
+- name: Listen on all addresses
+  lineinfile:
+    path: /var/lib/pgsql/data/postgresql.conf
+    regexp: '^#?listen_addresses'
+    line: "listen_addresses = '*'"
+
+- name: Allow network access
+  blockinfile:
+    path: /var/lib/pgsql/data/pg_hba.conf
+    block: |
+      host all all 172.16.6.0/24 md5
+      host all all 192.168.40.0/24 md5
+
+- name: Enable PostgreSQL
+  systemd:
+    name: postgresql
+    enabled: true
+    state: started
