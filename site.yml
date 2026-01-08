@@ -1,6 +1,42 @@
-- import_playbook: playbooks/base.yml
-- import_playbook: playbooks/edge.yml
-- import_playbook: playbooks/backend.yml
-- import_playbook: playbooks/data.yml
-- import_playbook: playbooks/ai.yml
-- import_playbook: playbooks/ops.yml
+---
+- name: Common baseline
+  hosts: all
+  become: true
+  roles:
+    - common
+
+- name: Redis
+  hosts: redis
+  become: true
+  roles:
+    - redis
+
+- name: PostgreSQL
+  hosts: postgres
+  become: true
+  roles:
+    - postgres
+
+- name: Backend API
+  hosts: api
+  become: true
+  roles:
+    - fastapi
+
+- name: Edge Nginx
+  hosts: edge
+  become: true
+  roles:
+    - nginx
+
+- name: AI Worker
+  hosts: ai_worker
+  become: true
+  roles:
+    - ai_worker
+
+- name: Monitoring
+  hosts: monitoring
+  become: true
+  roles:
+    - monitoring
