@@ -1,0 +1,19 @@
+---
+# defaults file for roles/grafana
+
+# Grafana
+grafana_http_port: 3000
+grafana_listen_address: "0.0.0.0"
+grafana_protocol: http
+
+# Admin 계정 (실습용 기본값)
+grafana_admin_user: admin
+grafana_admin_password: admin1234
+
+# Datasource: Prometheus
+grafana_prometheus_name: Prometheus
+grafana_prometheus_url: "http://127.0.0.1:9090"
+
+# Dashboard provisioning (대시보드 파일을 넣으면 자동 로드)
+grafana_dashboards_path: /var/lib/grafana/dashboards
+grafana_enable_dashboard_provisioning: true

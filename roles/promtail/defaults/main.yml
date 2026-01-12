@@ -1,0 +1,24 @@
+---
+# defaults file for roles/promtail
+
+promtail_version: "3.0.0"
+promtail_arch: "linux-amd64"
+
+promtail_user: promtail
+promtail_group: promtail
+
+promtail_bin_dir: /usr/local/bin
+promtail_conf_dir: /etc/promtail
+promtail_data_dir: /var/lib/promtail
+
+# Loki push endpoint (모든 서버에서 접근 가능한 Loki IP로 지정)
+loki_push_url: "{{ promtail_loki_push_url }}"
+
+# 기본 수집 로그 파일(없으면 자동 스킵되게 구성)
+promtail_log_paths:
+  - /var/log/messages
+  - /var/log/secure
+  - /var/log/audit/audit.log
+
+# labels
+promtail_job_label: "varlogs"

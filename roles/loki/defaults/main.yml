@@ -1,0 +1,21 @@
+---
+# defaults file for loki
+
+loki_version: "3.0.0"
+loki_arch: "linux-amd64"
+
+loki_user: loki
+loki_group: loki
+
+loki_bin_dir: /usr/local/bin
+loki_conf_dir: /etc/loki
+loki_data_dir: /var/lib/loki
+
+loki_listen_address: "0.0.0.0"
+loki_http_port: 3100
+
+# 단일 노드 실습/운영(온프레미스) 기본값
+loki_replication_factor: 1
+
+# 로그 보관 기간(예: 7일)
+loki_retention_period: "168h"

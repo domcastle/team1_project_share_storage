@@ -1,0 +1,12 @@
+---
+# handlers file for roles/promtail
+
+- name: daemon-reload
+  systemd:
+    daemon_reload: true
+
+- name: restart promtail
+  systemd:
+    name: promtail
+    state: restarted
+    enabled: true

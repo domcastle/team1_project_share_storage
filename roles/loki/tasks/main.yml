@@ -1,0 +1,87 @@
+---
+# tasks file for loki
+
+- name: Create loki group
+  group:
+    name: "{{ loki_group }}"
+    system: true
+
+- name: Create loki user
+  user:
+    name: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+
+- name: Create Loki directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+  loop:
+    - "{{ loki_conf_dir }}"
+    - "{{ loki_data_dir }}"
+    - "{{ loki_data_dir }}/chunks"
+    - "{{ loki_data_dir }}/wal"
+    - "{{ loki_data_dir }}/compactor"
+    - "{{ loki_data_dir }}/rules"
+
+- name: Ensure unzip is installed
+  dnf:
+    name: unzip
+    state: present
+
+- name: Download Loki zip
+  get_url:
+    url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/loki-{{ loki_arch }}.zip"
+    dest: "/tmp/loki-{{ loki_version }}.zip"
+    mode: "0644"
+
+- name: Unzip Loki binary
+  unarchive:
+    src: "/tmp/loki-{{ loki_version }}.zip"
+    dest: "/tmp"
+    remote_src: true
+
+- name: Install Loki binary
+  copy:
+    src: "/tmp/loki-{{ loki_arch }}"
+    dest: "{{ loki_bin_dir }}/loki"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+
+- name: Deploy Loki config
+  template:
+    src: loki.yml.j2
+    dest: "{{ loki_conf_dir }}/loki.yml"
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0644"
+  notify: restart loki
+
+- name: Deploy systemd unit
+  template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    mode: "0644"
+  notify:
+    - daemon-reload
+    - restart loki
+
+- name: Enable and start Loki
+  systemd:
+    name: loki
+    state: started
+    enabled: true
+
+- name: Ensure Loki data dir ownership recursively
+  file:
+    path: "{{ loki_data_dir }}"
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    recurse: true

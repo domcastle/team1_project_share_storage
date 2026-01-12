@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+{% for svc in service_scrape_definitions %}
+  - job_name: "{{ svc.job_name }}"
+    static_configs:
+      - targets:
+{% set ns = namespace(targets=[]) %}
+{% for g in svc.groups %}
+{% for h in (groups[g] | default([])) %}
+{% set host_ip = (hostvars[h].ansible_host | default(h)) %}
+{% set t = host_ip ~ ':' ~ (svc.port | string) %}
+{% if t not in ns.targets %}
+{% set _ = ns.targets.append(t) %}
+        - "{{ t }}"
+{% endif %}
+{% endfor %}
+{% endfor %}
+        labels:
+          job: "{{ svc.job_name }}"
+{% endfor %}

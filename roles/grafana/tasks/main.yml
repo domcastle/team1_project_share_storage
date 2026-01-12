@@ -1,0 +1,82 @@
+---
+# tasks file for roles/grafana_loki
+- name: Install Grafana repo
+  copy:
+    dest: /etc/yum.repos.d/grafana.repo
+    mode: "0644"
+    content: |
+      [grafana]
+      name=grafana
+      baseurl=https://rpm.grafana.com
+      repo_gpgcheck=1
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://rpm.grafana.com/gpg.key
+  tags: grafana
+
+- name: Install Grafana
+  dnf:
+    name: grafana
+    state: present
+  tags: grafana
+
+- name: Deploy grafana.ini
+  template:
+    src: grafana.ini.j2
+    dest: /etc/grafana/grafana.ini
+    mode: "0644"
+  notify: restart grafana
+  tags: grafana
+
+- name: Ensure provisioning directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /etc/grafana/provisioning/datasources
+    - /etc/grafana/provisioning/dashboards
+    - "{{ grafana_dashboards_path }}"
+  tags: grafana
+
+- name: Provision Prometheus datasource
+  template:
+    src: provisioning/datasources/prometheus.yml.j2
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    mode: "0644"
+  notify: restart grafana
+  tags: grafana
+
+- name: Provision Loki datasource
+  template:
+    src: provisioning/datasources/loki.yml.j2
+    dest: /etc/grafana/provisioning/datasources/loki.yml
+    mode: "0644"
+  notify: restart grafana
+  tags: grafana
+
+
+- name: Provision dashboard provider (optional)
+  template:
+    src: provisioning/dashboards/provider.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/provider.yml
+    mode: "0644"
+  when: grafana_enable_dashboard_provisioning | bool
+  notify: restart grafana
+  tags: grafana
+
+- name: Enable and start grafana-server
+  systemd:
+    name: grafana-server
+    state: started
+    enabled: true
+  tags: grafana
+
+- name: Copy Grafana dashboards (auto provision)
+  copy:
+    src: dashboards/
+    dest: "{{ grafana_dashboards_path }}/"
+    mode: "0644"
+  when: grafana_enable_dashboard_provisioning | bool
+  notify: restart grafana
+  tags: grafana

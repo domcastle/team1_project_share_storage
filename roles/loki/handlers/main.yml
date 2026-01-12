@@ -1,0 +1,12 @@
+---
+# handlers file for loki
+
+- name: daemon-reload
+  systemd:
+    daemon_reload: true
+
+- name: restart loki
+  systemd:
+    name: loki
+    state: restarted
+    enabled: true

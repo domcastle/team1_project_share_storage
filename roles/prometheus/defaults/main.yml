@@ -1,0 +1,17 @@
+---
+# defaults file for roles/prometheus
+
+# 설치 사용자/경로
+prometheus_user: prometheus
+prometheus_group: prometheus
+
+prometheus_bin_dir: /usr/local/bin
+prometheus_conf_dir: /etc/prometheus
+prometheus_data_dir: /var/lib/prometheus
+
+# 버전/리스닝(인벤토리 group_vars/all.yml에서 덮어쓸 수 있음)
+prometheus_version: "3.5.0"
+prometheus_listen: "0.0.0.0:9090"
+
+# scrape 정의 (인벤토리에서 덮어쓰는게 정석)
+service_scrape_definitions: []
