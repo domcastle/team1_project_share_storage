@@ -1,0 +1,46 @@
+---
+# DR-HA(Patroni Replica) 기본값
+
+# Patroni cluster 식별자 (조원 클러스터와 반드시 동일해야 함)
+patroni_scope: "pgsql-cluster"
+patroni_namespace: "/patroni/"
+
+# DR-HA가 바인딩할 DBNET IP (2nd NIC)
+patroni_bind_ip: "10.1.5.80"
+patroni_restapi_port: 8008
+patroni_postgres_port: 5432
+
+# etcd v3 endpoints
+patroni_etcd3_hosts:
+  - "10.1.5.10:2379"
+  - "10.1.5.20:2379"
+  - "10.1.5.30:2379"
+
+# PostgreSQL 15
+pg_version: "15"
+patroni_pg_bin_dir: "/usr/pgsql-15/bin"
+patroni_data_dir: "/var/lib/pgsql/15/data"
+
+# 인증 (조원 클러스터와 반드시 일치)
+patroni_replication_username: "replicator"
+patroni_replication_password: "replicator"
+
+patroni_superuser_username: "postgres"
+patroni_superuser_password: "postgres"
+
+# DR-HA는 자동 승격 금지(최후 수동 승격 용)
+patroni_tags:
+  nofailover: true
+  noloadbalance: true
+  clonefrom: false
+  nosync: true
+
+# basebackup 옵션
+patroni_basebackup_max_rate: "50M"
+patroni_basebackup_checkpoint: "fast"
+
+# # pg_hba (DR-HA 로컬 인스턴스 기준)
+# patroni_pg_hba:
+#   - "host replication replicator 10.1.5.80/24 md5"
+#   - "host all all 10.1.5.0/24 md5"
+#   - "host all all 127.0.0.1/32 trust"

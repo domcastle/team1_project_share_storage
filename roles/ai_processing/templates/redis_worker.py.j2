@@ -1,0 +1,31 @@
+import redis, json, subprocess, time
+
+r = redis.Redis(
+    host="{{ redis_host }}",
+    port={{ redis_port }},
+    decode_responses=True
+)
+
+QUEUE = "{{ video_queue_name }}"
+
+while True:
+    _, raw = r.brpop(QUEUE)
+    job = json.loads(raw)
+
+    job_id = job["job_id"]
+    script = job["script"]
+
+    r.set(f"{{ video_status_prefix }}:{job_id}", "processing")
+
+    try:
+        subprocess.run(
+            ["bash", script],
+            cwd="/opt/ai",
+            check=True
+        )
+        r.set(f"{{ video_status_prefix }}:{job_id}", "done")
+
+    except Exception:
+        r.set(f"{{ video_status_prefix }}:{job_id}", "failed")
+
+    time.sleep(1)

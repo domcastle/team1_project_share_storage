@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Justic - Main</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- ✅ 로그인 체크 -->
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+  </script>
+</head>
+<body>
+
+  <div class="page-center">
+    <p class="guide-text">
+      한 줄의 텍스트로 AI 영상을 생성해보세요.
+    </p>
+
+    <div class="input-box">
+      <textarea
+        id="prompt"
+        placeholder="예: 고양이가 번개를 맞고 사이버 고양이로 진화하는 영상"
+        rows="1"
+      ></textarea>
+
+      <button>
+        <span>▶</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 우측 상단 메뉴 -->
+  <div class="top-menu">
+    <div class="menu-btn" id="menuBtn">
+      <span></span>
+    </div>
+
+    <div class="menu-dropdown" id="menuDropdown">
+      <a href="#" id="libraryBtn">영상 라이브러리</a>
+      <a href="#" id="logoutBtn">로그아웃</a>
+    </div>
+  </div>
+
+  <script>
+    const menuBtn = document.getElementById("menuBtn");
+    const menuDropdown = document.getElementById("menuDropdown");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const libraryBtn = document.getElementById("libraryBtn");
+
+    menuBtn.addEventListener("click", () => {
+      menuDropdown.classList.toggle("show");
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+    });
+
+    libraryBtn.addEventListener("click", () => {
+      window.location.href = "library.html";
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+        menuDropdown.classList.remove("show");
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,13 +1,59 @@
 ---
 # roles/was/tasks/main.yml
 
-- name: Install system packages (Python + Redis client)
+# ============================================
+# Enable EPEL (필수 유틸용)
+# ============================================
+
+- name: Enable EPEL repository
+  yum:
+    name: epel-release
+    state: present
+
+
+# ============================================
+# Install base system packages (❌ ffmpeg 제외)
+# ============================================
+
+- name: Install system packages (Python, Redis client, PostgreSQL client)
   yum:
     name:
       - python3
       - python3-pip
-      - redis          # ★ 중요: redis-cli 포함
+      - redis              # redis-cli (OAuth state / session 검증용)
+      - postgresql         # psql client (DB 연결 검증용)
+      - tar
+      - xz
     state: present
+
+
+# ============================================
+# Install ffmpeg (Static Binary 방식 ⭐ 핵심)
+# ============================================
+
+- name: Download ffmpeg static binary
+  get_url:
+    url: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+    dest: /tmp/ffmpeg.tar.xz
+    mode: '0644'
+
+- name: Extract ffmpeg archive
+  unarchive:
+    src: /tmp/ffmpeg.tar.xz
+    dest: /opt
+    remote_src: yes
+
+- name: Install ffmpeg binary
+  shell: |
+    cp /opt/ffmpeg-*-static/ffmpeg /usr/local/bin/ffmpeg
+    chmod +x /usr/local/bin/ffmpeg
+  args:
+    creates: /usr/local/bin/ffmpeg
+
+
+# ============================================
+# WAS application directories
+# ============================================
 
 - name: Create WAS base directory
   file:
@@ -24,6 +70,11 @@
     owner: ansible
     group: ansible
     mode: '0755'
+
+
+# ============================================
+# Deploy WAS application
+# ============================================
 
 - name: Copy WAS application files
   copy:
@@ -43,6 +94,11 @@
     requirements: /opt/was/app/requirements.txt
     virtualenv: /opt/was/venv
     virtualenv_python: python3
+
+
+# ============================================
+# Environment & systemd
+# ============================================
 
 - name: Copy WAS environment file
   copy:
@@ -66,3 +122,32 @@
     name: was
     enabled: yes
     state: started
+
+
+# ============================================
+# Video storage directories (Veo)
+# ============================================
+
+- name: Create video base directory
+  file:
+    path: /var/lib/veo
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: '0755'
+
+- name: Create video storage directory
+  file:
+    path: /var/lib/veo/videos
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: '0755'
+
+- name: Create thumbnail storage directory
+  file:
+    path: /var/lib/veo/thumbs
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: '0755'

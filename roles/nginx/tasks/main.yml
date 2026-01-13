@@ -1,4 +1,8 @@
 ---
+# =============================
+# Nginx
+# =============================
+
 - name: Install nginx
   become: yes
   yum:
@@ -12,21 +16,87 @@
     enabled: yes
     state: started
 
-- name: Deploy FastAPI reverse proxy config
+# =============================
+# Web Root Directory
+# =============================
+
+- name: Ensure web root directory exists
+  become: yes
+  file:
+    path: /usr/share/nginx/html
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: "0755"
+
+# =============================
+# Auth Server Reverse Proxy
+# =============================
+
+- name: Deploy FastAPI reverse proxy config (auth.justic.store)
+  become: yes
   template:
     src: fastapi.conf.j2
     dest: /etc/nginx/conf.d/fastapi.conf
     owner: root
     group: root
     mode: "0644"
-  notify: Reload nginx
+  notify: reload nginx
+
+# =============================
+# Web Server (justic.store)
+# =============================
+
+- name: Deploy web nginx config (justic.store)
+  become: yes
+  template:
+    src: web.conf.j2
+    dest: /etc/nginx/conf.d/web.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+# =============================
+# Deploy Web Static Files (HTML)
+# =============================
+
+- name: Deploy web html files
+  become: yes
+  copy:
+    src: "{{ item }}"
+    dest: /usr/share/nginx/html/
+    owner: nginx
+    group: nginx
+    mode: "0644"
+  loop:
+    - index.html
+    - main.html
+    - library.html
+    - login_success.html
+
+# =============================
+# Deploy Web Static Files (CSS)
+# =============================
+
+- name: Deploy web css directory
+  become: yes
+  copy:
+    src: css/
+    dest: /usr/share/nginx/html/css/
+    owner: nginx
+    group: nginx
+    mode: "0755"
+
+# =============================
+# Keepalived
+# =============================
+
 - name: Install keepalived
   become: yes
   yum:
     name: keepalived
     state: present
-
-# Keepalived
 
 - name: Deploy keepalived config
   become: yes
@@ -44,57 +114,3 @@
     name: keepalived
     enabled: yes
     state: started
-
-
-# # -----------------------------
-# # Firewall configuration
-# # -----------------------------
-
-# - name: Ensure firewalld is installed
-#   become: yes
-#   yum:
-#     name: firewalld
-#     state: present
-
-# - name: Ensure firewalld is running
-#   become: yes
-#   systemd:
-#     name: firewalld
-#     state: started
-#     enabled: yes
-
-# # Inbound HTTP (nginx)
-# - name: Allow HTTP service (80/tcp)
-#   become: yes
-#   ansible.posix.firewalld:
-#     service: http
-#     permanent: yes
-#     state: enabled
-#     immediate: yes
-
-# # Outbound DNS (yum, curl 필수)
-# - name: Allow DNS service
-#   become: yes
-#   ansible.posix.firewalld:
-#     service: dns
-#     permanent: yes
-#     state: enabled
-#     immediate: yes
-
-# # Outbound HTTPS (yum, pip, 외부 통신)
-# - name: Allow HTTPS service
-#   become: yes
-#   ansible.posix.firewalld:
-#     service: https
-#     permanent: yes
-#     state: enabled
-#     immediate: yes
-
-# # ICMP (ping 허용)
-# - name: Allow ICMP (ping)
-#   become: yes
-#   ansible.posix.firewalld:
-#     icmp_block: echo-request
-#     state: disabled
-#     permanent: yes
-#     immediate: yes

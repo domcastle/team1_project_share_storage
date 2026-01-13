@@ -1,0 +1,13 @@
+bind 0.0.0.0
+protected-mode yes
+port 6379
+
+timeout 0
+tcp-keepalive 300
+
+# Queue 용도 → persistence 불필요
+save ""
+appendonly no
+
+maxmemory 512mb
+maxmemory-policy noeviction

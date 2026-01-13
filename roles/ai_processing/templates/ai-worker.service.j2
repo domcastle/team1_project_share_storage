@@ -1,0 +1,12 @@
+[Unit]
+Description=AI Redis Worker
+After=network.target redis.service
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/ai/redis_worker.py
+Restart=always
+User=root
+WorkingDirectory=/opt/ai
+
+[Install]
+WantedBy=multi-user.target

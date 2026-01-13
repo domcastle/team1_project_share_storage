@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Justic</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="center-box">
+    <h1>안녕하세요!</h1>
+    <p>무슨 영상을 만들어 드릴까요?</p>
+
+    <a href="http://auth.justic.store:8000/auth/google/login" class="login-btn">
+      Google로 로그인
+    </a>
+  </div>
+
+  <!-- ✅ 이미 로그인되어 있으면 메인으로 -->
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      window.location.href = "main.html";
+    }
+  </script>
+</body>
+</html>

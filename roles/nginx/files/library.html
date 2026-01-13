@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Justic - Library</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- 로그인 체크 -->
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+  </script>
+</head>
+<body>
+
+  <!-- 우측 상단 메뉴 -->
+  <div class="top-menu">
+    <div class="menu-btn" id="menuBtn">
+      <span></span>
+    </div>
+
+    <div class="menu-dropdown" id="menuDropdown">
+      <a href="#" id="goMainBtn">영상 생성하러 가기</a>
+      <a href="#" id="logoutBtn">로그아웃</a>
+    </div>
+  </div>
+
+  <!-- 라이브러리 -->
+  <div class="library-container">
+    <h2 class="library-title">영상 라이브러리</h2>
+    <div class="video-grid" id="videoGrid"></div>
+  </div>
+
+  <!-- 메뉴 스크립트 -->
+  <script>
+    const menuBtn = document.getElementById("menuBtn");
+    const menuDropdown = document.getElementById("menuDropdown");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const goMainBtn = document.getElementById("goMainBtn");
+
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menuDropdown.classList.toggle("show");
+    });
+
+    goMainBtn.addEventListener("click", () => {
+      window.location.href = "main.html";
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+    });
+
+    document.addEventListener("click", () => {
+      menuDropdown.classList.remove("show");
+    });
+  </script>
+
+  <!-- 라이브러리 로직 -->
+  <script>
+    const videoGrid = document.getElementById("videoGrid");
+
+    // 1️⃣ 내 영상 목록 불러오기
+    async function loadLibrary() {
+      try {
+        const res = await fetch("/api/video/list", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) throw new Error("라이브러리 조회 실패");
+
+        const data = await res.json();
+
+        if (!data.videos || data.videos.length === 0) {
+          videoGrid.innerHTML = "<p>아직 생성된 영상이 없습니다.</p>";
+          return;
+        }
+
+        videoGrid.innerHTML = "";
+
+        data.videos.forEach(video => {
+          const card = document.createElement("div");
+          card.className = "video-card";
+
+          card.innerHTML = `
+            <img
+              class="thumb-img"
+              src="/api/video/thumb/${video.task_id}.jpg"
+              alt="thumbnail"
+              loading="lazy"
+            />
+            <p class="video-id">${video.task_id.slice(0, 8)}</p>
+          `;
+
+          card.addEventListener("click", () => {
+            openPreview(video.task_id);
+          });
+
+          videoGrid.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error(err);
+        alert("영상 라이브러리를 불러오지 못했습니다.");
+      }
+    }
+
+    // 2️⃣ 영상 미리보기 (스트리밍)
+    async function openPreview(taskId) {
+      try {
+        const res = await fetch(`/api/video/stream/${taskId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) throw new Error("영상 재생 실패");
+
+        const blob = await res.blob();
+        const videoUrl = URL.createObjectURL(blob);
+
+        const video = document.createElement("video");
+        video.src = videoUrl;
+        video.controls = true;
+        video.autoplay = true;
+        video.style.maxWidth = "90%";
+        video.style.maxHeight = "90%";
+
+        const modal = document.createElement("div");
+        modal.style.position = "fixed";
+        modal.style.top = 0;
+        modal.style.left = 0;
+        modal.style.right = 0;
+        modal.style.bottom = 0;
+        modal.style.background = "rgba(0,0,0,0.8)";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+        modal.style.zIndex = 9999;
+
+        modal.addEventListener("click", () => {
+          URL.revokeObjectURL(videoUrl);
+          modal.remove();
+        });
+
+        modal.appendChild(video);
+        document.body.appendChild(modal);
+
+      } catch (err) {
+        console.error(err);
+        alert("영상을 재생할 수 없습니다.");
+      }
+    }
+
+    // 초기 로드
+    loadLibrary();
+  </script>
+
+</body>
+</html>

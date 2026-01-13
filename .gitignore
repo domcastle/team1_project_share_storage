@@ -1,0 +1,9 @@
+# WAS environment file (explicit)
+roles/was/files/was.env
+
+# All environment files
+*.env
+
+# Allow example env files
+!*.env.example
+

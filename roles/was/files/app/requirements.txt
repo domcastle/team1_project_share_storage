@@ -1,9 +1,9 @@
 fastapi
 uvicorn
-requests
 pyjwt
 python-multipart
 redis>=5.0.0
 sqlalchemy
 psycopg2-binary
 httpx
+asyncpg

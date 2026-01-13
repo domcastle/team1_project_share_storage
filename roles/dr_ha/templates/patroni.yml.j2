@@ -1,0 +1,74 @@
+# DR-HA Patroni Replica config
+# - 조원 클러스터(patroni_scope/namespace)와 동일해야 함
+# - etcd3 사용 필수 (v2(/v2)면 404)
+
+scope: {{ patroni_scope }}
+namespace: {{ patroni_namespace }}
+name: {{ inventory_hostname }}
+
+tags:
+{% for k, v in (patroni_tags | default({})).items() %}
+  {{ k }}: {{ v | tojson }}
+{% endfor %}
+
+restapi:
+  listen: {{ patroni_bind_ip }}:{{ patroni_restapi_port }}
+  connect_address: {{ patroni_bind_ip }}:{{ patroni_restapi_port }}
+
+etcd3:
+  hosts:
+{% for h in patroni_etcd3_hosts %}
+    - {{ h }}
+{% endfor %}
+
+# bootstrap 섹션은 "최초 클러스터 생성" 시에만 사용됨.
+# 이미 조원이 DCS에 클러스터를 만들어둔 상태면, DR-HA에서는 사실상 무시됨.
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      parameters:
+        wal_level: replica
+        hot_standby: "on"
+        max_wal_senders: 10
+        max_replication_slots: 10
+        wal_keep_size: 512MB
+
+  # DR-HA는 initdb 하지 않음 (basebackup로 채움)
+  initdb: []
+
+postgresql:
+  listen: {{ patroni_bind_ip }}:{{ patroni_postgres_port }}
+  connect_address: {{ patroni_bind_ip }}:{{ patroni_postgres_port }}
+
+  data_dir: {{ patroni_data_dir }}
+  bin_dir: {{ patroni_pg_bin_dir }}
+
+  authentication:
+    superuser:
+      username: {{ patroni_superuser_username }}
+      password: {{ patroni_superuser_password }}
+    replication:
+      username: {{ patroni_replication_username }}
+      password: {{ patroni_replication_password }}
+
+  create_replica_methods:
+    - basebackup
+
+  basebackup:
+    max-rate: {{ patroni_basebackup_max_rate }}
+    checkpoint: {{ patroni_basebackup_checkpoint }}
+
+  parameters:
+    port: {{ patroni_postgres_port }}
+
+pg_hba:
+  - "local   all             postgres                                trust"
+  - "host    all             all             127.0.0.1/32             trust"
+  - "host    replication     {{ patroni_replication_username }} {{ patroni_bind_ip }}/32 md5"
+  - "host    replication     {{ patroni_replication_username }} 10.1.5.0/24 md5"
+  - "host    all             all             10.1.5.0/24               md5"

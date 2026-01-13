@@ -1,0 +1,30 @@
+upstream auth_backend {
+    server 172.16.6.53:8000;
+    server 172.16.6.54:8000 backup;
+}
+
+server {
+    listen 8000;
+    server_name justic.store;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 🔥 로그인 성공 페이지 매핑
+    location = /login/success {
+        try_files /login_success.html =404;
+    }
+
+    # 🔥 auth API → FastAPI
+    location /auth/ {
+        proxy_pass http://auth_backend;
+        proxy_set_header Host auth.justic.store;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 정적 파일
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

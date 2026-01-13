@@ -5,17 +5,18 @@
   roles:
     - common
 
-- name: Redis
-  hosts: redis
+- name: Redis1
+  hosts: redis1
   become: true
   roles:
-    - redis
+    - redis1
 
-- name: PostgreSQL
-  hosts: storage
+- name: Redis2
+  hosts: redis2
   become: true
   roles:
-    - postgres
+    - role: redis2
+      tags: redis2
 
 - name: Nginx
   hosts: web
@@ -33,7 +34,9 @@
   hosts: ai_worker
   become: true
   roles:
-    - ai_processing
+    - role: ai_processing
+      tags: ai_processing
+
 
 - name: Baseline (optional)
   hosts: all
@@ -51,7 +54,18 @@
     - grafana
 
 - name: DR / Backup
-  hosts: dr
+  hosts: dr1
   become: true
   roles:
     - dr
+- import_playbook: dr_ha.yml
+- import_playbook: pgsql-patroni.yml
+- import_playbook: pgsql-haproxy.yml
+- import_playbook: pgsql-keepalived.yml
+- import_playbook: pgsql-postgresql.yml
+- import_playbook: pgsql-etcd.yml
+- import_playbook: prometheus.yml
+- import_playbook: grafana.yml
+- import_playbook: loki.yml
+- import_playbook: promtail.yml
+- import_playbook: node_exporter.yml
