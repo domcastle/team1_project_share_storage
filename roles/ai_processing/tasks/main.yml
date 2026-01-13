@@ -7,3 +7,4 @@
 - import_tasks: scripts.yml    # 5️⃣ 실행 스크립트
 - import_tasks: cleanup.yml    # 6️⃣ 정리/cron
 - import_tasks: worker.yml
+- import_tasks: deps.yml

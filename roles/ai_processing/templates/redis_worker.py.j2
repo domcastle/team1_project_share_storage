@@ -7,25 +7,21 @@ r = redis.Redis(
 )
 
 QUEUE = "{{ video_queue_name }}"
+STATUS = "{{ video_status_prefix }}"
+
+SCRIPT = "/opt/ai/jobs/run_ffmpeg.sh"
 
 while True:
     _, raw = r.brpop(QUEUE)
     job = json.loads(raw)
 
     job_id = job["job_id"]
-    script = job["script"]
-
-    r.set(f"{{ video_status_prefix }}:{job_id}", "processing")
+    r.set(f"{STATUS}:{job_id}", "processing")
 
     try:
-        subprocess.run(
-            ["bash", script],
-            cwd="/opt/ai",
-            check=True
-        )
-        r.set(f"{{ video_status_prefix }}:{job_id}", "done")
-
+        subprocess.run(["bash", SCRIPT], check=True)
+        r.set(f"{STATUS}:{job_id}", "done")
     except Exception:
-        r.set(f"{{ video_status_prefix }}:{job_id}", "failed")
+        r.set(f"{STATUS}:{job_id}", "failed")
 
     time.sleep(1)

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+JOB_ID="{{ '{{' }} job_id | default(ansible_date_time.epoch) {{ '}}' }}"
+
+LOG_DIR="/opt/ai/logs"
+OUT_DIR="/opt/ai/output"
+SRC_VIDEO="/opt/ai/jobs/test.mp4"
+
+mkdir -p "$LOG_DIR" "$OUT_DIR"
+
+echo "[$(date)] job start $JOB_ID" >> "$LOG_DIR/job_${JOB_ID}.log"
+
+ffmpeg -y \
+  -i "$SRC_VIDEO" \
+  -vf scale=1280:720 \
+  "$OUT_DIR/output_${JOB_ID}.mp4" \
+  >> "$LOG_DIR/job_${JOB_ID}.log" 2>&1
+
+echo "[$(date)] job end $JOB_ID" >> "$LOG_DIR/job_${JOB_ID}.log"

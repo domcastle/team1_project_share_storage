@@ -1,11 +1,11 @@
 [Unit]
 Description=AI Redis Worker
-After=network.target redis.service
+After=network.target
 
 [Service]
 ExecStart=/usr/bin/python3 /opt/ai/redis_worker.py
 Restart=always
-User=root
+User=ansible
 WorkingDirectory=/opt/ai
 
 [Install]

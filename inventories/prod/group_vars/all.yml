@@ -16,8 +16,9 @@ grafana_loki_url: "http://172.16.6.57:3100"
 # promtail이 로그를 푸시할 Loki 주소
 promtail_loki_push_url: "http://172.16.6.57:3100/loki/api/v1/push"
 
-redis_host: redis
+redis_host: 10.1.1.10     # ← 실제 Redis 서버 IP
 redis_port: 6379
 
 video_queue_name: video:queue
 video_status_prefix: video:status
+
