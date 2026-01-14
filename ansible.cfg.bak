@@ -8,9 +8,7 @@ interpreter_python = auto_silent
 remote_user = ansible
 
 [ssh_connection]
-ssh_args = -o ControlMaster=auto -o ControlPersist=60s
-pipelining = True
-control_path = /tmp/ansible-ssh-%%h-%%p-%%r
+ssh_args = -F /home/ansible/.ssh/config -o ControlMaster=auto -o ControlPersist=60s
 
 [privilege_escalation]
 become = True
