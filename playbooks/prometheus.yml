@@ -1,5 +1,0 @@
-- name: Install Prometheus on monitoring server
-  hosts: monitoring
-  become: true
-  roles:
-    - prometheus

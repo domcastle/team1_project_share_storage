@@ -1,0 +1,42 @@
+---
+- name: Ensure postgres .ssh exists on DR
+  become: true
+  ansible.builtin.file:
+    path: "/var/lib/pgsql/.ssh"
+    state: directory
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0700"
+
+- name: Generate SSH key for postgres on DR (if not exists)
+  become: true
+  become_user: "{{ postgres_user }}"
+  ansible.builtin.command: >
+    ssh-keygen -t rsa -b 2048 -N "" -f /var/lib/pgsql/.ssh/id_rsa
+  args:
+    creates: "/var/lib/pgsql/.ssh/id_rsa"
+
+- name: Read DR postgres public key
+  become: true
+  ansible.builtin.slurp:
+    src: "/var/lib/pgsql/.ssh/id_rsa.pub"
+  register: dr_postgres_pubkey_b64
+
+- name: Ensure postgres .ssh exists on Primary
+  become: true
+  delegate_to: "{{ primary_inventory_host }}"
+  ansible.builtin.file:
+    path: "/var/lib/pgsql/.ssh"
+    state: directory
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0700"
+
+- name: Add DR postgres pubkey to Primary authorized_keys
+  become: true
+  delegate_to: "{{ primary_inventory_host }}"
+  ansible.builtin.authorized_key:
+    user: "{{ postgres_user }}"
+    key: "{{ dr_postgres_pubkey_b64.content | b64decode }}"
+    state: present
+    manage_dir: false

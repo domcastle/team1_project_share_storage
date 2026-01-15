@@ -1,0 +1,72 @@
+---
+- name: Ensure required packages are installed (sudo, openssh-server)
+  become: true
+  dnf:
+    name:
+      - sudo
+      - openssh-server
+    state: present
+
+- name: Ensure sshd is enabled and running
+  become: true
+  systemd:
+    name: "{{ sshd_service_name }}"
+    enabled: true
+    state: started
+
+- name: Ensure postgres user exists on repo server
+  become: true
+  user:
+    name: "{{ repo_postgres_user }}"
+    system: true
+    create_home: true
+    home: "{{ repo_postgres_home }}"
+    shell: "{{ repo_postgres_shell }}"
+
+# ⚠️ 여기부터가 핵심: become_user로 파일 모듈 쓰면 예전 tmp ownership 문제 재발 가능
+# 그래서 heredoc + sudo -iu 방식으로 안전하게 처리
+- name: Prepare postgres SSH directory and authorized_keys (safe)
+  become: true
+  shell: |
+    set -euo pipefail
+    sudo -iu {{ repo_postgres_user }} bash <<'EOF'
+    set -euo pipefail
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    touch ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    EOF
+  args:
+    executable: /bin/bash
+
+- name: Ensure pgBackRest repo base directory exists
+  become: true
+  file:
+    path: "{{ pgbackrest_repo_dir }}"
+    state: directory
+    owner: "{{ repo_postgres_user }}"
+    group: "{{ repo_postgres_user }}"
+    mode: "0750"
+
+# (선택) firewalld를 쓸 때만 SSH 포트 오픈
+- name: Open SSH service in firewalld (optional)
+  become: true
+  when: repo_manage_firewalld | bool and repo_open_ssh_port | bool
+  block:
+    - name: Ensure firewalld installed
+      dnf:
+        name: firewalld
+        state: present
+
+    - name: Ensure firewalld running
+      systemd:
+        name: firewalld
+        enabled: true
+        state: started
+
+    - name: Allow SSH service
+      firewalld:
+        service: ssh
+        permanent: true
+        state: enabled
+        immediate: true

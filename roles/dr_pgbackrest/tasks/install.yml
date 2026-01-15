@@ -1,0 +1,92 @@
+---
+- name: Disable PostgreSQL module
+  become: true
+  ansible.builtin.command: dnf module disable postgresql -y
+  changed_when: true
+
+- name: Install PGDG repo rpm
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ pgdg_repo_rpm }}"
+    state: present
+    disable_gpg_check: true
+
+- name: Install PostgreSQL packages on DR (DO NOT initdb)
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - "postgresql{{ pg_version }}"
+      - "postgresql{{ pg_version }}-server"
+    state: present
+
+- name: Enable CRB (CentOS Stream 9)
+  become: true
+  ansible.builtin.command: dnf config-manager --set-enabled crb
+  changed_when: true
+
+- name: Install EPEL release
+  become: true
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+
+- name: DNF clean all
+  become: true
+  ansible.builtin.command: dnf clean all
+  changed_when: true
+
+- name: DNF makecache
+  become: true
+  ansible.builtin.command: dnf makecache
+  changed_when: true
+
+- name: Install libssh2 deps
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - libssh2
+      - libssh2-devel
+    state: present
+
+- name: Install pgBackRest
+  become: true
+  ansible.builtin.dnf:
+    name: pgbackrest
+    state: present
+
+- name: Create pgBackRest config dir
+  become: true
+  ansible.builtin.file:
+    path: "{{ pgbackrest_conf_dir }}"
+    state: directory
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0750"
+
+- name: Create pgBackRest repo dir
+  become: true
+  ansible.builtin.file:
+    path: "{{ pgbackrest_repo_dir }}"
+    state: directory
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0750"
+
+- name: Deploy pgbackrest.conf (DR)
+  become: true
+  ansible.builtin.template:
+    src: pgbackrest.conf.j2
+    dest: "{{ pgbackrest_conf }}"
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0640"
+
+- name: Check pgBackRest version
+  become: true
+  ansible.builtin.command: pgbackrest --version
+  register: pgbackrest_ver
+  changed_when: false
+
+- name: Show pgBackRest version
+  ansible.builtin.debug:
+    msg: "{{ pgbackrest_ver.stdout }}"

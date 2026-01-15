@@ -1,0 +1,14 @@
+pg_version: "15"
+stanza_name: "pgcluster"
+
+primary_ip: "172.16.6.57"
+postgres_user: "postgres"
+
+pg_data_dir: "/var/lib/pgsql/{{ pg_version }}/data"
+
+pgbackrest_conf_dir: "/etc/pgbackrest"
+pgbackrest_conf: "/etc/pgbackrest/pgbackrest.conf"
+pgbackrest_repo_dir: "/var/lib/pgbackrest"
+
+pgdg_repo_rpm: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+primary_inventory_host: "db01"

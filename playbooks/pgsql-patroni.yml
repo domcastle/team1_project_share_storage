@@ -1,6 +1,0 @@
----
-- name: Deploy Patroni PostgreSQL Cluster
-  hosts: pgsql_db
-  become: yes
-  roles:
-    - patroni

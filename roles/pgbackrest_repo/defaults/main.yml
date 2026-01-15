@@ -1,0 +1,21 @@
+---
+pg_version: "15"
+stanza_name: "pgcluster"
+
+postgres_user: "postgres"
+pg_data_dir: "/var/lib/pgsql/{{ pg_version }}/data"
+
+pgbackrest_conf_dir: "/etc/pgbackrest"
+pgbackrest_conf: "{{ pgbackrest_conf_dir }}/pgbackrest.conf"
+pgbackrest_repo_dir: "/var/lib/pgbackrest"
+
+# 백업 대상 DB(일단 고정: dba)
+pgbackrest_primary_host: "10.1.5.20"
+
+# PGDG repo rpm (이미 group_vars에 있으면 override됨)
+pgdg_repo_rpm: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+
+# 설치에 필요할 수 있는 repo
+enable_crb: true
+enable_epel: true
+disable_postgresql_module: true

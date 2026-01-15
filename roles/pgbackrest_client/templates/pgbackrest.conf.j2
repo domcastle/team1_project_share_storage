@@ -1,0 +1,7 @@
+[global]
+repo1-host={{ pgbackrest_repo_internal_ip }}
+repo1-host-user=postgres
+process-max=4
+
+[{{ stanza_name }}]
+pg1-path={{ pg_data_dir }}

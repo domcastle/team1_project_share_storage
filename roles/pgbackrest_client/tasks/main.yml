@@ -1,0 +1,17 @@
+- name: Ensure pgBackRest config dir exists
+  become: true
+  file:
+    path: /etc/pgbackrest
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0750"
+
+- name: Deploy pgBackRest client config
+  become: true
+  template:
+    src: pgbackrest.conf.j2
+    dest: /etc/pgbackrest/pgbackrest.conf
+    owner: postgres
+    group: postgres
+    mode: "0640"

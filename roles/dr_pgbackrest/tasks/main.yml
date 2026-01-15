@@ -1,0 +1,9 @@
+---
+- name: Install packages and configure pgBackRest on DR
+  ansible.builtin.import_tasks: install.yml
+
+- name: Configure SSH trust (DR postgres -> Primary postgres)
+  ansible.builtin.import_tasks: ssh_trust.yml
+
+- name: Create stanza and run full backup
+  ansible.builtin.import_tasks: backup.yml

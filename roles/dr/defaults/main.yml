@@ -1,9 +1,0 @@
-# pgBackRest 기본 설정
-pgbackrest_repo_path: /data/pgbackrest
-pgbackrest_stanza: main
-
-# PostgreSQL data 경로 (DR 서버 기준)
-pg_data_path: /var/lib/pgsql/data
-
-# 🚨 DR 안전장치 (기본 false)
-dr_restore: false

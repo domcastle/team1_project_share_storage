@@ -1,8 +1,0 @@
----
-# playbooks/pgsql-etcd.yml
-- name: Setup etcd cluster for Patroni
-  hosts: pgsql_db
-  become: true
-
-  roles:
-    - etcd

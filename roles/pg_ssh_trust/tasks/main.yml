@@ -1,0 +1,11 @@
+- include_tasks: db.yml
+  when: inventory_hostname in groups['pgsql_db']
+
+- include_tasks: repo.yml
+  when: inventory_hostname in groups['pgbackrest_repo']
+
+- include_tasks: repo_keygen.yml
+  when: inventory_hostname in groups['pgbackrest_repo']
+
+- include_tasks: db_authorize_repo.yml
+  when: inventory_hostname in groups['pgsql_db']

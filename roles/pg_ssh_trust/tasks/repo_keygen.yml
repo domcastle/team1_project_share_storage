@@ -1,0 +1,24 @@
+- name: Ensure postgres SSH key exists on repo
+  become: true
+  shell: |
+    set -e
+    sudo -iu postgres bash <<'EOF'
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    if [ ! -f ~/.ssh/id_rsa ]; then
+      ssh-keygen -t rsa -b 2048 -N "" -f ~/.ssh/id_rsa
+    fi
+    chmod 600 ~/.ssh/id_rsa
+    chmod 644 ~/.ssh/id_rsa.pub
+    EOF
+  args:
+    executable: /bin/bash
+
+- name: Read repo postgres public key
+  slurp:
+    src: /var/lib/pgsql/.ssh/id_rsa.pub
+  register: repo_pubkey_raw
+
+- name: Set repo postgres pubkey fact
+  set_fact:
+    repo_postgres_pubkey: "{{ repo_pubkey_raw.content | b64decode | trim }}"

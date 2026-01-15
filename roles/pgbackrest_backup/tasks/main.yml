@@ -1,0 +1,34 @@
+- name: Ensure stanza exists before backup (backup.info)
+  become: true
+  stat:
+    path: "/var/lib/pgbackrest/backup/{{ stanza_name }}/backup.info"
+  register: backup_info
+
+- name: Create stanza if missing
+  become: true
+  shell: |
+    set -euo pipefail
+    sudo -iu {{ postgres_user }} pgbackrest \
+      --stanza={{ stanza_name }} \
+      --log-level-console=detail \
+      stanza-create
+  args:
+    executable: /bin/bash
+  when: not backup_info.stat.exists
+
+- name: Run pgBackRest full backup (retry)
+  become: true
+  shell: |
+    set -euo pipefail
+    sudo -iu {{ postgres_user }} pgbackrest \
+      --stanza={{ stanza_name }} \
+      --type=full \
+      --archive-timeout={{ pgbackrest_archive_timeout | default('120s') }} \
+      --log-level-console=detail \
+      backup
+  args:
+    executable: /bin/bash
+  register: backup_run
+  retries: 3
+  delay: 20
+  until: backup_run.rc == 0

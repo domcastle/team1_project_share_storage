@@ -1,0 +1,75 @@
+---
+- name: Install dnf plugins (config-manager)
+  become: true
+  dnf:
+    name: dnf-plugins-core
+    state: present
+
+- name: Enable CRB repository (optional)
+  become: true
+  command: dnf config-manager --set-enabled crb
+  when: enable_crb | bool
+  changed_when: false
+
+- name: Install EPEL repository (optional)
+  become: true
+  dnf:
+    name: epel-release
+    state: present
+  when: enable_epel | bool
+
+- name: Disable built-in postgresql module (optional)
+  become: true
+  command: dnf -y module disable postgresql
+  when: disable_postgresql_module | bool
+  changed_when: false
+
+- name: Install PGDG repo rpm
+  become: true
+  dnf:
+    name: "{{ pgdg_repo_rpm }}"
+    state: present
+    disable_gpg_check: true
+
+- name: Install pgBackRest package
+  become: true
+  dnf:
+    name: pgbackrest
+    state: present
+
+- name: Ensure pgBackRest config dir exists
+  become: true
+  file:
+    path: "{{ pgbackrest_conf_dir }}"
+    state: directory
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0750"
+
+- name: Deploy pgBackRest repo config
+  become: true
+  template:
+    src: pgbackrest.conf.j2
+    dest: "{{ pgbackrest_conf }}"
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0640"
+
+- name: Ensure repo directory exists with proper ownership
+  become: true
+  file:
+    path: "{{ pgbackrest_repo_dir }}"
+    state: directory
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0750"
+
+- name: Check pgBackRest version
+  become: true
+  command: pgbackrest version
+  register: pgbackrest_version_out
+  changed_when: false
+
+- name: Show pgBackRest version
+  debug:
+    msg: "{{ pgbackrest_version_out.stdout }}"

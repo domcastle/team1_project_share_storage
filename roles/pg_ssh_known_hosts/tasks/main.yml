@@ -1,0 +1,36 @@
+- name: Ensure postgres known_hosts on repo (Repo -> DB)
+  become: true
+  shell: |
+    sudo -iu postgres bash <<'EOF'
+    set -euo pipefail
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    touch ~/.ssh/known_hosts
+    chmod 600 ~/.ssh/known_hosts
+    for h in 10.1.5.10 10.1.5.20 10.1.5.30; do
+      ssh-keygen -R "$h" -f ~/.ssh/known_hosts >/dev/null 2>&1 || true
+      ssh-keyscan -T 3 -H "$h" >> ~/.ssh/known_hosts 2>/dev/null || true
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=yes postgres@$h "echo STRICT_OK" >/dev/null
+    done
+    EOF
+  when: inventory_hostname in groups['pgbackrest_repo']
+
+- name: Ensure repo host key in DB postgres known_hosts (DB -> Repo)
+  become: true
+  shell: |
+    sudo -iu postgres bash <<'EOF'
+    set -euo pipefail
+    repo="10.1.5.81"
+
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    touch ~/.ssh/known_hosts
+    chmod 600 ~/.ssh/known_hosts
+
+    ssh-keygen -R "$repo" -f ~/.ssh/known_hosts >/dev/null 2>&1 || true
+    ssh-keyscan -T 3 -H "$repo" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+    # strict 모드로 접속 테스트 (실패하면 여기서 바로 터져서 원인 빨리 드러남)
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=yes postgres@"$repo" "echo STRICT_OK" >/dev/null
+    EOF
+  when: inventory_hostname in groups['pgsql_db']

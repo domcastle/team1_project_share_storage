@@ -1,0 +1,17 @@
+- name: Check stanza marker file (backup.info)
+  become: true
+  stat:
+    path: "/var/lib/pgbackrest/backup/{{ stanza_name }}/backup.info"
+  register: backup_info
+
+- name: Create pgBackRest stanza (force when repo is empty)
+  become: true
+  shell: |
+    set -euo pipefail
+    sudo -iu {{ postgres_user }} pgbackrest \
+      --stanza={{ stanza_name }} \
+      --log-level-console=detail \
+      stanza-create
+  args:
+    executable: /bin/bash
+  when: not backup_info.stat.exists

@@ -1,6 +1,0 @@
-- name: Create pgBackRest stanza
-  command: >
-    pgbackrest --stanza={{ pgbackrest_stanza }} stanza-create
-  become_user: postgres
-  args:
-    creates: "{{ pgbackrest_repo_path }}/backup/{{ pgbackrest_stanza }}"

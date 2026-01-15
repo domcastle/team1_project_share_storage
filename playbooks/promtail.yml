@@ -1,7 +1,0 @@
-- name: Install Promtail on all servers
-  hosts: all
-  become: true
-  roles:
-    - promtail
-
-    

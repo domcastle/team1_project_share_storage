@@ -1,5 +1,0 @@
-pgbackrest_repo_path: /data/pgbackrest
-pg_data_path: /var/lib/pgsql/data
-
-# 기본 false
-dr_restore: false

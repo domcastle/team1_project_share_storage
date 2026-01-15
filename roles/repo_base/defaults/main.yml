@@ -1,0 +1,19 @@
+---
+# repo 서버에서 pgbackrest가 사용할 계정 (표준: postgres)
+repo_postgres_user: "postgres"
+repo_postgres_home: "/var/lib/pgsql"
+repo_postgres_shell: "/bin/bash"
+
+# ssh 기본 경로
+repo_ssh_dir: "{{ repo_postgres_home }}/.ssh"
+repo_authorized_keys: "{{ repo_ssh_dir }}/authorized_keys"
+
+# repo 디렉터리(다음 롤에서 실제 사용)
+pgbackrest_repo_dir: "/var/lib/pgbackrest"
+
+# sshd 서비스명 (CentOS Stream 9)
+sshd_service_name: "sshd"
+
+# firewalld 제어 여부 (랩에서 꺼져있으면 false로 둬도 됨)
+repo_manage_firewalld: false
+repo_open_ssh_port: true

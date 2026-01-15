@@ -1,0 +1,24 @@
+- name: Ensure authorized_keys exists on repo
+  become: true
+  shell: |
+    sudo -iu postgres bash <<'EOF'
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    touch ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    EOF
+  args:
+    executable: /bin/bash
+
+- name: Register DB postgres keys
+  become: true
+  shell: |
+    sudo -iu postgres bash <<'EOF'
+    AUTH="$HOME/.ssh/authorized_keys"
+    {% for h in groups['pgsql_db'] %}
+    KEY="{{ hostvars[h].pg_postgres_pubkey }}"
+    grep -qxF "$KEY" "$AUTH" || echo "$KEY" >> "$AUTH"
+    {% endfor %}
+    EOF
+  args:
+    executable: /bin/bash

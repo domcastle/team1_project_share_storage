@@ -1,3 +1,6 @@
+############################################
+# Monitoring_VAR
+############################################
 prometheus_version: "3.5.0"
 prometheus_listen: "0.0.0.0:9090"
 
@@ -21,4 +24,95 @@ redis_port: 6379
 
 video_queue_name: video:queue
 video_status_prefix: video:status
+
+ansible_user: ansible
+ansible_become: true
+ansible_become_method: sudo
+
+############################################
+# DR_VAR
+############################################
+# 필요하면 여기서 오버라이드
+dr_web_title: "DR WEB SERVER"
+dr_web_note: "Warm Standby - DR 전환 확인용"
+dr_fastapi_port: 8000
+
+
+pg_version: "15"
+stanza_name: "pgsql-cluster"
+
+pgbackrest_db_nodes:
+  - host: "10.1.5.10"
+    path: "/var/lib/pgsql/15/data"
+    user: "postgres"
+  - host: "10.1.5.20"
+    path: "/var/lib/pgsql/15/data"
+    user: "postgres"
+  - host: "10.1.5.30"
+    path: "/var/lib/pgsql/15/data"
+    user: "postgres"
+
+# pgBackRest 관점에서 "백업 대상 DB"
+pgbackrest_primary_host: "10.1.5.10"   # 일단 고정 (나중에 leader 자동탐지 가능)
+
+# pgBackRest repo 서버 내부 IP (DB들이 SSH 붙을 주소)
+pgbackrest_repo_internal_ip: "10.1.5.81"
+
+
+postgres_user: "postgres"
+
+pg_data_dir: "/var/lib/pgsql/{{ pg_version }}/data"
+
+pgbackrest_conf_dir: "/etc/pgbackrest"
+pgbackrest_conf: "/etc/pgbackrest/pgbackrest.conf"
+pgbackrest_repo_dir: "/var/lib/pgbackrest"
+
+pgdg_repo_rpm: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+
+# =========================
+# DR-HA (Patroni Replica) 설정
+# =========================
+patroni_scope: "pgsql-cluster"
+patroni_namespace: "/patroni/"
+
+# DR-HA는 관리망(ansible_host) + DB망(patroni_bind_ip) 2 NIC 사용
+patroni_bind_ip: "10.1.5.80"          # DR-HA DBNET IP
+patroni_restapi_port: 8008
+patroni_postgres_port: 5432
+
+# etcd는 조원 DB 클러스터(10.1.5.10/20/30)의 etcd3를 사용 (v2(/v2) 쓰면 404)
+patroni_etcd3_hosts:
+  - "10.1.5.10:2379"
+  - "10.1.5.20:2379"
+  - "10.1.5.30:2379"
+
+# Replication 계정 (조원 Patroni/DB에 존재하는 값과 반드시 동일해야 함)
+patroni_replication_username: "replicator"
+patroni_replication_password: "replicator"
+
+# DR-HA 로컬 postgres 슈퍼유저(로컬 접속용)
+patroni_superuser_username: "postgres"
+patroni_superuser_password: "postgres"
+
+# DR-HA를 '자동 승격 금지'로 두고, 최후에 수동 승격(patronictl promote) 하는 용도
+patroni_tags:
+  nofailover: true
+  noloadbalance: true
+  clonefrom: false
+  nosync: true
+
+
+pg_ssh_trust_direction: "both"
+
+# === pgBackRest SSH known_hosts 자동화용 ===
+
+# DB 노드들 (Repo → DB SSH trust)
+pgbackrest_db_hosts:
+  - "10.1.5.10"
+  - "10.1.5.20"
+  - "10.1.5.30"
+
+# Repo 서버 IP (DB → Repo SSH trust)
+pgbackrest_repo_ip: "10.1.5.81"
+###############################################
 

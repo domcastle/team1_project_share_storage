@@ -4,7 +4,9 @@
   become: true
   roles:
     - common
-
+######################################################
+# WEB-WAS Part
+######################################################
 - name: Redis1
   hosts: redis1
   become: true
@@ -29,7 +31,52 @@
   become: true
   roles:
     - was
+######################################################
+# DB part
+######################################################  
+# pgsql-haproxy.yml
 
+- name: PostgreSQL HAProxy Load Balancer Setup
+  hosts: pgsql_lb
+  become: true
+
+  roles:
+    - haproxy_pgsql
+
+# pgsql-keepalived.yml
+- name: Keepalived VIP HA Setup
+  hosts: pgsql_lb
+  become: true
+
+  roles:
+    - keepalived
+
+# pgsql-postgresql.yml
+- name: Install PostgreSQL 15 (for Patroni)
+  hosts: pgsql_db
+  become: true
+  roles:
+    - postgresql
+
+# pgsql-postgresql.yml
+- name: Deploy Patroni PostgreSQL Cluster
+  hosts: pgsql_db
+  become: yes
+  roles:
+    - patroni  
+
+# playbooks/pgsql-etcd.yml
+- name: Setup etcd cluster for Patroni
+  hosts: pgsql_db
+  become: true
+  roles:
+    - etcd
+  
+
+
+######################################################
+# ai_worker
+######################################################
 - name: AI Processing
   hosts: ai_worker
   become: true
@@ -37,7 +84,9 @@
     - role: ai_processing
       tags: ai_processing
 
-
+######################################################
+# Monitoring
+######################################################
 - name: Baseline (optional)
   hosts: all
   become: true
@@ -53,19 +102,76 @@
     - loki
     - grafana
 
-- name: DR / Backup
-  hosts: dr1
+
+######################################################
+# DR
+######################################################  
+- name: Build DR-HA Patroni Replica (Remote DC)
+  hosts: dr_ha
   become: true
   roles:
-    - dr
-- import_playbook: dr_ha.yml
-- import_playbook: pgsql-patroni.yml
-- import_playbook: pgsql-haproxy.yml
-- import_playbook: pgsql-keepalived.yml
-- import_playbook: pgsql-postgresql.yml
-- import_playbook: pgsql-etcd.yml
-- import_playbook: prometheus.yml
-- import_playbook: grafana.yml
-- import_playbook: loki.yml
-- import_playbook: promtail.yml
-- import_playbook: node_exporter.yml
+    - dr_ha
+########################################
+# 1. Repo 서버 기본 준비
+########################################
+- name: Prepare repo server base
+  hosts: dr_repo
+  gather_facts: false
+  roles:
+    - repo_base
+
+########################################
+# 2. pgBackRest repo 설치 및 설정
+########################################
+- name: Install and configure pgBackRest on repo
+  hosts: dr_repo
+  gather_facts: false
+  roles:
+    - pgbackrest_repo
+
+########################################
+# 3. DB ↔ Repo SSH trust 구성
+########################################
+- name: Configure SSH trust (DB <-> Repo)
+  hosts: pgsql_db:dr_repo
+  gather_facts: false
+  roles:
+    - pg_ssh_trust
+
+########################################
+# 4. Repo postgres known_hosts 준비 (중요)
+########################################
+- name: Prepare postgres known_hosts on repo
+  hosts: dr_repo
+  gather_facts: false
+  roles:
+    - pg_ssh_known_hosts
+
+########################################
+# 5. DB 노드 pgBackRest client 설정
+########################################
+- name: Configure pgBackRest client on DB nodes
+  hosts: pgsql_db
+  gather_facts: false
+  roles:
+    - pgbackrest_client
+
+########################################
+# 6. pgBackRest stanza 생성 (repo, idempotent)
+########################################
+- name: Create pgBackRest stanza on repo
+  hosts: dr_repo
+  gather_facts: false
+  roles:
+    - pgbackrest_stanza
+
+########################################
+# 7. pgBackRest full backup 실행 (repo)
+########################################
+- name: Run pgBackRest full backup on repo
+  hosts: dr_repo
+  gather_facts: false
+  roles:
+    - pgbackrest_backup
+
+

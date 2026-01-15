@@ -1,0 +1,36 @@
+---
+- name: stanza-create (DR)
+  become: true
+  become_user: "{{ postgres_user }}"
+  ansible.builtin.command: "pgbackrest --stanza={{ stanza_name }} stanza-create"
+  register: stanza_create
+  changed_when: true
+
+- name: pgbackrest info (after stanza-create)
+  become: true
+  become_user: "{{ postgres_user }}"
+  ansible.builtin.command: "pgbackrest info"
+  register: info1
+  changed_when: false
+
+- name: Show pgbackrest info
+  ansible.builtin.debug:
+    var: info1.stdout_lines
+
+- name: First full backup (DR)
+  become: true
+  become_user: "{{ postgres_user }}"
+  ansible.builtin.command: "pgbackrest --stanza={{ stanza_name }} backup --type=full"
+  register: backup_full
+  changed_when: true
+
+- name: pgbackrest info (after full backup)
+  become: true
+  become_user: "{{ postgres_user }}"
+  ansible.builtin.command: "pgbackrest info"
+  register: info2
+  changed_when: false
+
+- name: Show pgbackrest info (final)
+  ansible.builtin.debug:
+    var: info2.stdout_lines

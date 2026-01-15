@@ -1,7 +1,0 @@
----
-- name: Keepalived VIP HA Setup
-  hosts: pgsql_lb
-  become: true
-
-  roles:
-    - keepalived
