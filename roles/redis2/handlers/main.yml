@@ -1,4 +1,5 @@
+# handlers/main.yml
 - name: restart redis
-  service:
+  systemd:
     name: redis
     state: restarted

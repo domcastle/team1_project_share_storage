@@ -1,13 +1,29 @@
+# ===============================
+# Network
+# ===============================
 bind 0.0.0.0
-protected-mode yes
+protected-mode no
 port 6379
 
 timeout 0
 tcp-keepalive 300
 
-# Queue 용도 → persistence 불필요
+
+# ===============================
+# Job Queue 용도 (Persistence OFF)
+# ===============================
 save ""
 appendonly no
 
+
+# ===============================
+# Memory 관리
+# ===============================
 maxmemory 512mb
 maxmemory-policy noeviction
+
+
+# ===============================
+# Logging
+# ===============================
+loglevel notice

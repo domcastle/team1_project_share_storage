@@ -1,9 +1,10 @@
+---
 - name: Install Redis
   dnf:
     name: redis
     state: present
 
-- name: Configure redis for job queue
+- name: Deploy redis.conf for job queue
   template:
     src: redis.conf.j2
     dest: /etc/redis/redis.conf
@@ -12,7 +13,7 @@
     mode: '0644'
   notify: restart redis
 
-- name: Enable and start Redis
+- name: Ensure Redis is enabled and running
   systemd:
     name: redis
     enabled: yes

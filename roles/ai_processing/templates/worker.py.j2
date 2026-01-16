@@ -1,113 +1,65 @@
 #!/usr/bin/env python3
-import os
-import json
-import time
-import logging
-import subprocess
-
+import os, json, time, subprocess
 import redis
 from minio import Minio
-from minio.error import S3Error
 
-###############################################################################
-# Logging
-###############################################################################
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger("ai-worker")
-
-###############################################################################
-# Environment Variables
-###############################################################################
-REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_HOST = os.getenv("REDIS_HOST", "10.1.1.10")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
-MINIO_BUCKET = os.getenv("MINIO_BUCKET")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "10.1.1.50:9000")
+MINIO_BUCKET = os.getenv("MINIO_BUCKET", "videos")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 
-FFMPEG_SCRIPT = "/opt/ai/scripts/run_ffmpeg_shorts.sh"
+QUEUE = "video_processing_jobs"
+FF = "/opt/ai/scripts/run_ffmpeg_shorts.sh"
 
-REQUIRED_ENV = [
-    REDIS_HOST,
-    MINIO_ENDPOINT,
-    MINIO_BUCKET,
-    MINIO_ACCESS_KEY,
-    MINIO_SECRET_KEY,
-]
-
-if not all(REQUIRED_ENV):
-    raise RuntimeError("Required environment variables are missing")
-
-###############################################################################
-# Clients
-###############################################################################
-redis_client = redis.Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    decode_responses=True,
-)
-
-minio_client = Minio(
+r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+m = Minio(
     MINIO_ENDPOINT,
     access_key=MINIO_ACCESS_KEY,
     secret_key=MINIO_SECRET_KEY,
     secure=False,
 )
 
-###############################################################################
-# Helpers
-###############################################################################
-def ensure_bucket():
-    if not minio_client.bucket_exists(MINIO_BUCKET):
-        minio_client.make_bucket(MINIO_BUCKET)
-
-
-def download_from_minio(object_name: str, local_path: str):
-    logger.info(f"Downloading {object_name}")
-    obj = minio_client.get_object(MINIO_BUCKET, object_name)
+def download(obj, path):
+    o = m.get_object(MINIO_BUCKET, obj)
     try:
-        with open(local_path, "wb") as f:
-            for chunk in obj.stream(1024 * 1024):
-                f.write(chunk)
+        with open(path, "wb") as f:
+            for c in o.stream(1024 * 1024):
+                f.write(c)
     finally:
-        obj.close()
-        obj.release_conn()
+        o.close()
+        o.release_conn()
 
+def upload(obj, path):
+    m.fput_object(MINIO_BUCKET, obj, path, content_type="video/mp4")
 
-def upload_to_minio(object_name: str, local_path: str, content_type="video/mp4"):
-    logger.info(f"Uploading {object_name}")
-    minio_client.fput_object(
-        bucket_name=MINIO_BUCKET,
-        object_name=object_name,
-        file_path=local_path,
-        content_type=content_type,
-    )
-
-
-###############################################################################
-# Main Worker Loop
-###############################################################################
 def main():
-    logger.info("AI Worker started")
-    ensure_bucket()
-
     while True:
+        _, raw = r.blpop(QUEUE)
+        job = json.loads(raw)
+
+        task_id = job["task_id"]
+        inp = job["input"]
+        out = job["output"]
+
+        local_input = f"/tmp/{task_id}_input.mp4"
+        local_output = f"/tmp/{task_id}_output.mp4"
+
         try:
-            # Blocking pop (wait forever)
-            _, raw_job = redis_client.blpop("video_processing_jobs")
+            download(inp, local_input)
+            subprocess.run([FF, local_input, local_output], check=True)
+            upload(out, local_output)
+        finally:
+            for p in (local_input, local_output):
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except:
+                        pass
 
-            job = json.loads(raw_job)
-            task_id = job["task_id"]
-            user_id = job["user_id"]
-            input_object = job["input"]
-            output_object = job["output"]
+        time.sleep(1)
 
-            logger.info(f"[+] job={task_id} input={input_object} output={output_object}")
-
-            # Local paths
-            local_input = f"/tmp/{task_id}_input.mp4"
-            local_output = f"/tmp/{task_
+if __name__ == "__main__":
+    main()

@@ -5,3 +5,8 @@ ai_output_dir: /opt/ai/output
 redis_host: 10.1.1.10
 redis_port: 6379
 redis_password: ""
+
+ai_audio_retention_days: 3
+ai_log_retention_days: 14
+ai_status_retention_days: 14
+
