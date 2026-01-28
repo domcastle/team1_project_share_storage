@@ -1,35 +1,76 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-INPUT="$1"
-OUTPUT="$2"
+INPUT="${1:-}"
+OUTPUT="${2:-}"
+TTS_WAV="${3:-}"
+SUB_SRT="${4:-}"
+CAPTION_TEXT="${5:-편집된 영상입니다}"
 
-if [ ! -f "$INPUT" ]; then
-  echo "[ERROR] Input file not found: $INPUT"
+[ -z "$INPUT" ] || [ -z "$OUTPUT" ] && {
+  echo "Usage: $0 <input.mp4> <output.mp4> [tts.wav] [subtitles.srt] [caption_text]"
+  exit 2
+}
+
+[ ! -f "$INPUT" ] && {
+  echo "[ERROR] Input file not found"
   exit 1
+}
+
+FONT="/usr/share/fonts/paperlogy/Paperlogy-7Bold.ttf"
+
+# ✅ caption을 파일로 만들어 drawtext textfile로 사용 (ffmpeg escape 지옥 회피)
+CAPTION_FILE="$(mktemp /tmp/caption.XXXXXX.txt)"
+printf "%s" "$CAPTION_TEXT" > "$CAPTION_FILE"
+
+VF="
+scale=1080:1920:force_original_aspect_ratio=decrease,
+pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,
+drawbox=x=0:y=0:w=1080:h=200:color=black@0.65:t=fill,
+drawbox=x=0:y=1720:w=1080:h=200:color=black@0.65:t=fill,
+drawtext=
+  fontfile=${FONT}:
+  textfile=${CAPTION_FILE}:
+  fontcolor=white:
+  fontsize=64:
+  x=(w-text_w)/2:
+  y=1720+(200-text_h)/2
+"
+
+if [ -n "${SUB_SRT}" ] && [ -f "${SUB_SRT}" ]; then
+  VF="${VF},subtitles=${SUB_SRT}:fontsdir=/usr/share/fonts"
 fi
 
-# YouTube Shorts 기준
-# - 9:16
-# - max 60s
-# - 중앙 크롭
-# - 모바일 최적화
-ffmpeg -y \
-  -i "$INPUT" \
-  -t 60 \
-  -vf "
-    scale=ih*9/16:ih,
-    crop=ih*9/16:ih,
-    scale=1080:1920
-  " \
-  -r 30 \
-  -c:v libx264 \
-  -profile:v high \
-  -level 4.2 \
-  -pix_fmt yuv420p \
-  -preset veryfast \
-  -movflags +faststart \
-  -an \
-  "$OUTPUT"
+cleanup() {
+  rm -f "$CAPTION_FILE" || true
+}
+trap cleanup EXIT
+
+if [ -n "${TTS_WAV}" ] && [ -f "${TTS_WAV}" ]; then
+  echo "[INFO] Processing with TTS audio..."
+  ffmpeg -y \
+    -i "$INPUT" \
+    -i "$TTS_WAV" \
+    -vf "$VF" \
+    -map 0:v:0 -map 1:a:0 \
+    -c:v libx264 \
+    -pix_fmt yuv420p \
+    -preset veryfast \
+    -c:a aac -b:a 128k \
+    -movflags +faststart \
+    "$OUTPUT"
+else
+  echo "[INFO] Processing with original audio..."
+  ffmpeg -y \
+    -i "$INPUT" \
+    -vf "$VF" \
+    -map 0:v:0 -map 0:a? \
+    -c:v libx264 \
+    -pix_fmt yuv420p \
+    -preset veryfast \
+    -c:a aac -b:a 128k \
+    -movflags +faststart \
+    "$OUTPUT"
+fi
 
 echo "[OK] Shorts video created: $OUTPUT"

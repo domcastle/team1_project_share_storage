@@ -1,0 +1,206 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "FAIL" }, "1": { "text": "OK" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "expr": "pgbackrest_info_up{stanza=\"$stanza\", instance=\"$instance\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "Backup Collector Status (pgbackrest_info_up)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "unit": "dateTimeAsIso" }, "overrides": [] },
+      "gridPos": { "h": 6, "w": 12, "x": 6, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "pgbackrest_last_success_timestamp{stanza=\"$stanza\", instance=\"$instance\"} * 1000", "refId": "A" }
+      ],
+      "title": "Last Successful Backup Time",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 12 },
+              { "color": "red", "value": 24 }
+            ]
+          },
+          "unit": "h"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 9, "x": 0, "y": 6 },
+      "id": 3,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [
+        {
+          "expr": "(time() - pgbackrest_last_success_timestamp{stanza=\"$stanza\", instance=\"$instance\"}) / 3600",
+          "refId": "A"
+        }
+      ],
+      "title": "Hours Since Last Success (Gauge)",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 9, "x": 9, "y": 6 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "(time() - pgbackrest_textfile_generated_timestamp{stanza=\"$stanza\", instance=\"$instance\"}) / 60",
+          "refId": "A"
+        }
+      ],
+      "title": "Textfile Freshness (minutes)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 18, "x": 0, "y": 16 },
+      "id": 5,
+      "options": { "showHeader": true },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "expr": "pgbackrest_last_backup_type{stanza=\"$stanza\", instance=\"$instance\"}",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Backup Type (label type=full/diff/incr)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Loki",
+      "gridPos": { "h": 8, "w": 18, "x": 0, "y": 24 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({job=\"pgbackrest\", host=\"drrepo\"} |= \"ERROR\" [15m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "ERROR logs count (last 15m)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["dr", "pgbackrest", "dbbackup"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "pgsql-cluster", "value": "pgsql-cluster" },
+        "hide": 0,
+        "label": "stanza",
+        "name": "stanza",
+        "options": [],
+        "query": "pgsql-cluster",
+        "type": "constant"
+      },
+      {
+        "current": { "selected": false, "text": "172.16.6.59:9100", "value": "172.16.6.59:9100" },
+        "hide": 0,
+        "label": "instance",
+        "name": "instance",
+        "options": [],
+        "query": "172.16.6.59:9100",
+        "type": "constant"
+      }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "dbbackup collecter",
+  "uid": "dbbackup-collecter",
+  "version": 1,
+  "weekStart": ""
+}

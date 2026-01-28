@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>영상 생성 중</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    body {
+      background: #ffffff;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e5e5e5;
+      border-top: 4px solid #111;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .message {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .sub {
+      font-size: 13px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="spinner"></div>
+  <div class="message">영상 생성이 진행 중입니다</div>
+  <div class="sub">완료될 때까지 잠시만 기다려 주세요.</div>
+
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get("task_id");
+
+    if (!taskId) {
+      window.location.href = "loading_error.html";
+    }
+
+    const POLL_INTERVAL = 30000; // 30초
+    const MAX_WAIT = 5 * 60 * 1000; // 5분
+    const startTime = Date.now();
+
+    let intervalId = null;
+
+    async function checkStatus() {
+      try {
+        const res = await fetch(`/api/video/status/${taskId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error();
+
+        const data = await res.json();
+
+        if (data.status === "DONE") {
+          clearInterval(intervalId);
+          window.location.href = "loading_success.html";
+          return;
+        }
+
+        if (data.status === "FAILED") {
+          clearInterval(intervalId);
+          window.location.href = "loading_error.html";
+          return;
+        }
+
+        if (Date.now() - startTime > MAX_WAIT) {
+          clearInterval(intervalId);
+          window.location.href = "loading_error.html";
+        }
+
+      } catch {
+        clearInterval(intervalId);
+        window.location.href = "loading_error.html";
+      }
+    }
+
+    // ✅ 진입 시 즉시 1회 체크
+    checkStatus();
+
+    // ✅ 이후 주기적 polling
+    intervalId = setInterval(checkStatus, POLL_INTERVAL);
+  </script>
+
+</body>
+</html>

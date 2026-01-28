@@ -1,0 +1,20 @@
+---
+# roles/postgres_oauth/defaults/main.yml
+
+oauth_db_name: oauth_db
+oauth_db_user: oauth_user
+oauth_db_password: oauth_password
+
+# 이미 존재하므로 패스워드는 변경하지 않음
+# 필요 시 vault로 관리 가능
+oauth_db_privileges:
+  - CONNECT
+  - TEMP
+
+oauth_schema: public
+
+oauth_table_privileges:
+  - SELECT
+  - INSERT
+  - UPDATE
+  - DELETE

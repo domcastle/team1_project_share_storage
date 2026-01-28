@@ -5,17 +5,29 @@ After=network.target
 [Service]
 Type=simple
 User=ansible
-Group=ansible
 WorkingDirectory=/opt/ai
+Restart=always
+
 Environment=REDIS_HOST=10.1.1.10
 Environment=REDIS_PORT=6379
+Environment=REDIS_QUEUE=video_processing_jobs
+
 Environment=MINIO_ENDPOINT=10.1.1.50:9000
 Environment=MINIO_BUCKET=videos
 Environment=MINIO_ACCESS_KEY=justicadmin
 Environment=MINIO_SECRET_KEY=justicadmin123
+Environment=FFMPEG_SCRIPT=/opt/ai/scripts/run_ffmpeg_shorts.sh
+
 ExecStart=/usr/bin/python3 /opt/ai/worker.py
-Restart=always
-RestartSec=3
+
+# 🔥 핵심
+KillSignal=SIGTERM
+SendSIGKILL=no
+TimeoutStopSec=infinity
+Restart=on-failure
+
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

@@ -29,6 +29,11 @@ bootstrap:
         max_wal_senders: 10
         max_replication_slots: 10
 
+        # ===== pgBackRest WAL Archive =====
+        archive_mode: "on"
+        archive_timeout: "60s"
+        archive_command: "pgbackrest --stanza=pgsql-cluster archive-push %p"
+
   initdb:
     - encoding: UTF8
     - data-checksums
@@ -73,3 +78,7 @@ postgresql:
     max_wal_senders: 10
     max_replication_slots: 10
 
+    # ===== pgBackRest WAL Archive =====
+    archive_mode: "on"
+    archive_timeout: "60s"
+    archive_command: "pgbackrest --stanza=pgsql-cluster archive-push %p"

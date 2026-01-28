@@ -1,0 +1,44 @@
+---
+- name: Ensure textfile collector directory exists
+  become: true
+  file:
+    path: /var/lib/node_exporter/textfile_collector
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy pgbackrest textfile script
+  become: true
+  copy:
+    src: pgbackrest_textfile.py
+    dest: /usr/local/bin/pgbackrest_textfile.py
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install systemd service
+  become: true
+  template:
+    src: pgbackrest-textfile.service.j2
+    dest: /etc/systemd/system/pgbackrest-textfile.service
+    mode: "0644"
+
+- name: Install systemd timer
+  become: true
+  template:
+    src: pgbackrest-textfile.timer.j2
+    dest: /etc/systemd/system/pgbackrest-textfile.timer
+    mode: "0644"
+
+- name: Reload systemd
+  become: true
+  systemd:
+    daemon_reload: true
+
+- name: Enable and start timer
+  become: true
+  systemd:
+    name: pgbackrest-textfile.timer
+    enabled: true
+    state: started

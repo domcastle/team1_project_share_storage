@@ -1,12 +1,17 @@
 ---
 # roles/dr_ha/tasks/main.yml
 #
-# DR-HA (Patroni Replica) 구성
+# DR-HA (Patroni Replica) 구성 - SAFE VERSION
 # 핵심 포인트
 # 1) Patroni는 etcd v2(/v2)로 붙으면 404 → 반드시 etcd3: 사용 (템플릿 patroni.yml.j2에서 etcd3로 설정)
 # 2) systemd ExecStart는 `command -v patroni` 경로와 일치해야 함 (203/EXEC 방지)
 # 3) DR-HA는 initdb 하지 않고 basebackup으로 부트스트랩
 # 4) pg_basebackup 인증 실패 방지: postgres 홈에 .pgpass + PGPASSFILE 환경변수 강제
+# 5) (중요) 기본 실행에서는 절대 data_dir 삭제하지 않음 (운영 사고 방지)
+#
+# 재빌드(강제 재동기화)는:
+#   - ansible-playbook ... --tags rebuild
+#   - 또는 dr_ha_force_rebuild: true 일 때만 수행
 
 - name: Disable OS postgresql module
   ansible.builtin.command: dnf -y module disable postgresql
@@ -70,7 +75,8 @@
     mode: '0755'
 
 # NOTE: 실제 data_dir는 템플릿(patroni.yml.j2)과 pg_data_dir 변수가 일치해야 함
-- name: Ensure postgres data directory exists (empty dir is OK)
+# SAFE: 이미 존재하면 유지, 없으면 생성 (절대 삭제 안 함)
+- name: Ensure postgres data directory exists
   ansible.builtin.file:
     path: "{{ pg_data_dir }}"
     state: directory
@@ -123,6 +129,7 @@
     group: postgres
     mode: '0755'
 
+# NOTE(SAFE 개선): 운영망 IP 하드코딩은 향후 변수화 권장
 - name: Create pgpass files for postgres (both names)
   ansible.builtin.copy:
     dest: "{{ item }}"
@@ -136,7 +143,6 @@
   loop:
     - /var/lib/pgsql/.pgpass
     - /var/lib/pgsql/pgpass
-
 
 - name: Create systemd drop-in directory for patroni
   ansible.builtin.file:
@@ -156,29 +162,47 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
-# ---- Re-bootstrap (항상 새로 붙이기 원할 때 유용) ----
-# 이미 데이터가 꼬여 있으면 계속 bootstrap 실패 → data_dir 지우고 다시 basebackup 받게 강제
-- name: Stop patroni before re-bootstrap
+# ---- SAFE default: just enable/start patroni ----
+- name: Enable and start patroni (safe default)
+  ansible.builtin.systemd:
+    name: patroni
+    enabled: true
+    state: started
+
+# ============================================================
+# OPTIONAL: Rebuild (Force re-bootstrap)
+# - 기본 실행에서 절대 수행하지 않음
+# - 아래 태스크는 --tags rebuild 또는 dr_ha_force_rebuild=true 일 때만 실행
+# ============================================================
+
+- name: Rebuild | Stop patroni before re-bootstrap
   ansible.builtin.systemd:
     name: patroni
     state: stopped
   ignore_errors: true
+  tags: [rebuild]
+  when: dr_ha_force_rebuild | default(false) | bool
 
-- name: Remove data directory to force fresh bootstrap
+- name: Rebuild | Remove data directory to force fresh bootstrap
   ansible.builtin.file:
     path: "{{ pg_data_dir }}"
     state: absent
+  tags: [rebuild]
+  when: dr_ha_force_rebuild | default(false) | bool
 
-- name: Recreate data directory
+- name: Rebuild | Recreate data directory
   ansible.builtin.file:
     path: "{{ pg_data_dir }}"
     state: directory
     owner: postgres
     group: postgres
     mode: '0700'
+  tags: [rebuild]
+  when: dr_ha_force_rebuild | default(false) | bool
 
-- name: Enable and start patroni
+- name: Rebuild | Start patroni after re-bootstrap
   ansible.builtin.systemd:
     name: patroni
-    enabled: true
     state: started
+  tags: [rebuild]
+  when: dr_ha_force_rebuild | default(false) | bool

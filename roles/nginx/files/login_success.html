@@ -14,18 +14,27 @@
     if (!sid) {
       document.getElementById("status").innerText = "세션 ID 없음";
     } else {
-      fetch(`/auth/session?sid=${sid}`)
+      fetch(`https://auth.justic.store/auth/session?sid=${sid}`, {
+        method: "GET",
+        credentials: "include"
+      })
         .then(res => {
-          if (!res.ok) throw new Error();
+          if (!res.ok) throw new Error("세션 요청 실패");
           return res.json();
         })
         .then(data => {
+          if (!data.access_token) {
+            throw new Error("토큰 없음");
+          }
+
+          // ✅ JWT 저장
           localStorage.setItem("access_token", data.access_token);
 
-          // ✅ 바로 메인으로
-          window.location.href = "http://justic.store:8000/main.html";
+          // ✅ 메인 페이지로 이동
+          window.location.href = "https://justic.store/main.html";
         })
-        .catch(() => {
+        .catch(err => {
+          console.error(err);
           document.getElementById("status").innerText =
             "로그인 세션 만료. 다시 로그인하세요.";
         });

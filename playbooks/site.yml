@@ -7,19 +7,6 @@
 ######################################################
 # WEB-WAS Part
 ######################################################
-- name: Redis1
-  hosts: redis1
-  become: true
-  roles:
-    - redis1
-
-- name: Redis2
-  hosts: redis2
-  become: true
-  roles:
-    - role: redis2
-      tags: redis2
-
 - name: Nginx
   hosts: web
   become: true
@@ -31,47 +18,40 @@
   become: true
   roles:
     - was
+
+- name: Redis1
+  hosts: redis1
+  become: true
+  roles:
+    - redis1
+### AI
+- name: Redis2
+  hosts: redis2
+  become: true
+  roles:
+    - role: redis2
+      tags: redis2
 ######################################################
 # DB part
 ######################################################  
-# pgsql-haproxy.yml
-
-- name: PostgreSQL HAProxy Load Balancer Setup
+- name: LB server
   hosts: pgsql_lb
   become: true
 
   roles:
     - haproxy_pgsql
-
-# pgsql-keepalived.yml
-- name: Keepalived VIP HA Setup
-  hosts: pgsql_lb
-  become: true
-
-  roles:
     - keepalived
 
-# pgsql-postgresql.yml
-- name: Install PostgreSQL 15 (for Patroni)
-  hosts: pgsql_db
-  become: true
-  roles:
-    - postgresql
-
-# pgsql-postgresql.yml
-- name: Deploy Patroni PostgreSQL Cluster
-  hosts: pgsql_db
-  become: yes
-  roles:
-    - patroni  
-
-# playbooks/pgsql-etcd.yml
-- name: Setup etcd cluster for Patroni
+- name: db server 
   hosts: pgsql_db
   become: true
   roles:
     - etcd
-  
+    - postgresql
+    - patroni
+    - pgbackrest_client
+    - postgres_oauth
+    - postgres_ai
 
 
 ######################################################
@@ -84,24 +64,6 @@
     - role: ai_processing
       tags: ai_processing
 
-######################################################
-# Monitoring
-######################################################
-- name: Baseline (optional)
-  hosts: all
-  become: true
-  roles:
-    - node_exporter
-    - promtail  
-
-- name: Monitoring stack
-  hosts: monitoring
-  become: true
-  roles:
-    - prometheus
-    - loki
-    - grafana
-
 
 ######################################################
 # DR
@@ -111,6 +73,14 @@
   become: true
   roles:
     - dr_ha
+
+- name: DR Web + VIP Failover (keepalived)
+  hosts: dr_ha
+  become: true
+  roles:
+    - dr_web_static
+    - dr_keepalived
+
 ########################################
 # 1. Repo 서버 기본 준비
 ########################################
@@ -174,4 +144,20 @@
   roles:
     - pgbackrest_backup
 
+######################################################
+# Monitoring
+######################################################
+- name: Baseline (optional)
+  hosts: all
+  become: true
+  roles:
+    - node_exporter
+    - promtail  
 
+- name: Monitoring stack
+  hosts: monitoring
+  become: true
+  roles:
+    - prometheus
+    - loki
+    - grafana

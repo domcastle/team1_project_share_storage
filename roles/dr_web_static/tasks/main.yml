@@ -1,0 +1,34 @@
+---
+- name: Install nginx
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+
+- name: Deploy nginx DR config (listen 8000)
+  ansible.builtin.template:
+    src: nginx_dr.conf.j2
+    dest: /etc/nginx/conf.d/dr_web.conf
+    mode: "0644"
+  notify: Restart nginx
+
+# ✅ 조원 정적 리소스 그대로 배포
+- name: Deploy teammate static site
+  ansible.builtin.copy:
+    src: site/
+    dest: /usr/share/nginx/html/
+    owner: root
+    group: root
+    mode: "0755"
+
+# ✅ DR 전용 안내 index로 덮어쓰기
+- name: Override index.html to DR notice
+  ansible.builtin.template:
+    src: index_dr.html.j2
+    dest: /usr/share/nginx/html/index.html
+    mode: "0644"
+
+- name: Enable and start nginx
+  ansible.builtin.systemd:
+    name: nginx
+    enabled: true
+    state: started

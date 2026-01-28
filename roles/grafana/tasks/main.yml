@@ -65,6 +65,7 @@
   notify: restart grafana
   tags: grafana
 
+
 - name: Enable and start grafana-server
   systemd:
     name: grafana-server
@@ -72,11 +73,13 @@
     enabled: true
   tags: grafana
 
-- name: Copy Grafana dashboards (auto provision)
+
+- name: Copy selected Grafana dashboards only (auto provision)
   copy:
-    src: dashboards/
-    dest: "{{ grafana_dashboards_path }}/"
+    src: "dashboards/{{ item }}"
+    dest: "{{ grafana_dashboards_path }}/{{ item }}"
     mode: "0644"
+  loop: "{{ grafana_dashboards_selected }}"
   when: grafana_enable_dashboard_provisioning | bool
   notify: restart grafana
   tags: grafana

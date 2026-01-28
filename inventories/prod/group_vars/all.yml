@@ -32,11 +32,15 @@ ansible_become_method: sudo
 ############################################
 # DR_VAR
 ############################################
-# 필요하면 여기서 오버라이드
-dr_web_title: "DR WEB SERVER"
-dr_web_note: "Warm Standby - DR 전환 확인용"
-dr_fastapi_port: 8000
+# DR keepalived
+dr_vip: "172.16.6.50"
+dr_vip_cidr: "24"
+dr_keepalived_interface: "ens160"   # DR 서버 실제 NIC로 변경!
+dr_vrid: 51                         # nginx1/2와 반드시 동일
+dr_auth_pass: "JUSTICVIP"                # nginx1/2와 반드시 동일
 
+dr_state: "BACKUP"
+dr_priority: 50                     # 최저
 
 pg_version: "15"
 stanza_name: "pgsql-cluster"
@@ -68,6 +72,7 @@ pgbackrest_conf: "/etc/pgbackrest/pgbackrest.conf"
 pgbackrest_repo_dir: "/var/lib/pgbackrest"
 
 pgdg_repo_rpm: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+
 
 # =========================
 # DR-HA (Patroni Replica) 설정
@@ -114,5 +119,8 @@ pgbackrest_db_hosts:
 
 # Repo 서버 IP (DB → Repo SSH trust)
 pgbackrest_repo_ip: "10.1.5.81"
+
+# pgBackRest full backup 시 WAL 아카이브 대기 시간
+pgbackrest_archive_timeout: "120s"
 ###############################################
 

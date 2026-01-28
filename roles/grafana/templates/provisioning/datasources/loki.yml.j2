@@ -4,5 +4,5 @@ datasources:
   - name: Loki
     type: loki
     access: proxy
-    url: http://127.0.0.1:3100
+    url: {{ grafana_loki_url }}
     editable: true

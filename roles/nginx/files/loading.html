@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>영상 생성 중</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    body {
+      background: #ffffff;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    /* ===============================
+       로딩 영상 (spinner 대체)
+    =============================== */
+    .loading-video {
+      width: 160px;              /* ⬅ 살짝 키움 (120 → 160) */
+      margin-bottom: 24px;
+    }
+
+    .loading-video video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .message {
+      font-size: 18px;           /* ⬅ 16 → 18 */
+      font-weight: 500;
+      letter-spacing: 0.02em;   /* 은은한 고급감 */
+      margin-bottom: 8px;
+    }
+
+    .sub {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 16px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ===============================
+       Progress Bar
+    =============================== */
+    .progress-wrap {
+      width: 240px;
+      height: 6px;
+      background: #eee;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #111;
+      transition: width 0.6s ease;
+    }
+
+    .progress-text {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+
+  <!-- ✅ 히스토리에서 로딩 페이지 제거 -->
+  <script>
+    history.replaceState(null, "", location.href);
+  </script>
+</head>
+<body>
+
+  <!-- 🔄 로딩 영상 -->
+  <div class="loading-video">
+    <video
+      src="/videos/logo2.mp4"
+      autoplay
+      loop
+      muted
+      playsinline
+    ></video>
+  </div>
+
+  <div class="message">영상 생성이 진행 중입니다</div>
+  <div class="sub">
+    보통 1~2분 정도 소요됩니다.<br />
+    탭을 닫아도 작업은 계속 진행돼요.
+  </div>
+
+  <!-- 로딩바 -->
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div class="progress-text" id="progressText">0%</div>
+
+  <script>
+    // ===============================
+    // 인증 체크
+    // ===============================
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+
+    // ===============================
+    // URL 파라미터
+    // ===============================
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get("task_id");
+    const model = params.get("model") || "video";
+
+    if (!taskId) {
+      window.location.href = "loading_error.html";
+    }
+
+    // ===============================
+    // status API 자동 선택
+    // ===============================
+    const STATUS_API =
+      model === "video2"
+        ? `/api/video2/status/${taskId}`
+        : `/api/video/status/${taskId}`;
+
+    // ===============================
+    // polling 설정
+    // ===============================
+    const POLL_INTERVAL = 15000;
+    const MAX_WAIT = 5 * 60 * 1000;
+    const startTime = Date.now();
+
+    let intervalId = null;
+
+    // ===============================
+    // Fake Progress Bar (UX용)
+    // ===============================
+    let progress = 0;
+    const bar = document.getElementById("progressBar");
+    const text = document.getElementById("progressText");
+
+    const progressTimer = setInterval(() => {
+      const increment =
+        progress < 30 ? Math.random() * 8 :
+        progress < 60 ? Math.random() * 5 :
+        progress < 85 ? Math.random() * 2 :
+        Math.random() * 0.5;
+
+      progress += increment;
+      if (progress > 90) progress = 90;
+
+      bar.style.width = `${progress.toFixed(0)}%`;
+      text.textContent = `${progress.toFixed(0)}%`;
+    }, 3000);
+
+    // ===============================
+    // 상태 체크
+    // ===============================
+    async function checkStatus() {
+      try {
+        const res = await fetch(STATUS_API, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error();
+
+        const data = await res.json();
+
+        // ✅ 완료
+        if (data.status === "DONE") {
+          clearInterval(intervalId);
+          clearInterval(progressTimer);
+
+          bar.style.width = "100%";
+          text.textContent = "100%";
+
+          setTimeout(() => {
+            window.location.replace("loading_success.html");
+          }, 3000);
+          return;
+        }
+
+        // ❌ 실패
+        if (data.status === "FAILED") {
+          clearInterval(intervalId);
+          clearInterval(progressTimer);
+          window.location.replace("loading_error.html");
+          return;
+        }
+
+        // ⏱ 타임아웃
+        if (Date.now() - startTime > MAX_WAIT) {
+          clearInterval(intervalId);
+          clearInterval(progressTimer);
+          window.location.replace("loading_error.html");
+        }
+
+      } catch (e) {
+        clearInterval(intervalId);
+        clearInterval(progressTimer);
+        window.location.replace("loading_error.html");
+      }
+    }
+
+    // 즉시 1회 실행
+    checkStatus();
+
+    // 이후 polling
+    intervalId = setInterval(checkStatus, POLL_INTERVAL);
+  </script>
+
+</body>
+</html>

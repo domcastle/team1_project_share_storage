@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>영상 생성 실패</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- 로그인 체크 -->
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+  </script>
+
+  <style>
+    body {
+      background: #0f0f0f;
+      color: #fff;
+      min-height: 100vh;
+    }
+    .center-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+      gap: 14px;
+      text-align: center;
+    }
+    .error-icon {
+      font-size: 48px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .sub {
+      font-size: 14px;
+      color: #aaa;
+      margin-bottom: 12px;
+    }
+    .btns {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      background: #fff;
+      color: #000;
+      font-weight: 600;
+    }
+    .btn.secondary {
+      background: #333;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 우측 상단 메뉴 -->
+  <div class="top-menu">
+    <div class="menu-btn" id="menuBtn">
+      <span></span>
+    </div>
+    <div class="menu-dropdown" id="menuDropdown">
+      <a href="#" id="libraryBtn">영상 라이브러리</a>
+      <a href="#" id="logoutBtn">로그아웃</a>
+    </div>
+  </div>
+
+  <div class="center-box">
+    <div class="error-icon">⚠️</div>
+    <div class="title">영상 생성에 실패했습니다</div>
+    <div class="sub">잠시 후 다시 시도해주세요.</div>
+    <div class="btns">
+      <button class="btn" id="retryBtn">다시 생성하기</button>
+      <button class="btn secondary" id="goMainBtn">메인으로</button>
+    </div>
+  </div>
+
+  <script>
+    const menuBtn = document.getElementById("menuBtn");
+    const menuDropdown = document.getElementById("menuDropdown");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const libraryBtn = document.getElementById("libraryBtn");
+    const retryBtn = document.getElementById("retryBtn");
+    const goMainBtn = document.getElementById("goMainBtn");
+
+    menuBtn.addEventListener("click", () => {
+      menuDropdown.classList.toggle("show");
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+    });
+
+    libraryBtn.addEventListener("click", () => {
+      window.location.href = "library.html";
+    });
+
+    retryBtn.addEventListener("click", () => {
+      window.location.href = "main.html";
+    });
+
+    goMainBtn.addEventListener("click", () => {
+      window.location.href = "main.html";
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+        menuDropdown.classList.remove("show");
+      }
+    });
+  </script>
+
+</body>
+</html>

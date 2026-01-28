@@ -5,14 +5,95 @@
   <title>Justic - Main</title>
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- ✅ 로그인 체크 -->
+  <!-- 로그인 체크 -->
   <script>
     const token = localStorage.getItem("access_token");
     if (!token) {
       window.location.href = "index.html";
     }
   </script>
+
+  <style>
+    textarea {
+      resize: none;
+      overflow: hidden;
+      line-height: 1.5;
+      max-height: 200px;
+    }
+
+    /* =========================
+       모델 선택 (이미지 버튼)
+    ========================= */
+    .model-select {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    .model-btn {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .model-btn img {
+      max-width: 100%;
+      max-height: 100%;
+      transition: opacity 0.2s ease;
+    }
+
+    .model-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #111;
+      background: rgba(255, 255, 255, 0.92);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .model-btn:hover .model-label,
+    .model-btn.active .model-label {
+      opacity: 1;
+    }
+
+    .model-btn:hover img,
+    .model-btn.active img {
+      opacity: 0;
+    }
+
+    .model-btn.active {
+      border-color: #000;
+    }
+
+    /* 생성 버튼 통일 */
+    #generateBtn {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+    }
+
+    #generateBtn span {
+      font-size: 20px;
+    }
+  </style>
 </head>
+
 <body>
 
   <div class="page-center">
@@ -23,17 +104,34 @@
     <div class="input-box">
       <textarea
         id="prompt"
-        placeholder="예: 고양이가 번개를 맞고 사이버 고양이로 진화하는 영상"
+        placeholder="고양이가 번개를 맞고 사이버 고양이로 진화하는 영상 (자세하게 적을수록 정확도가 올라갑니다.)"
         rows="1"
       ></textarea>
 
-      <button>
-        <span>▶</span>
-      </button>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px; align-items:center;">
+        
+        <!-- 모델 선택 -->
+        <div class="model-select">
+          <div class="model-btn" data-model="veo">
+            <img src="images/veo.png" alt="VEO">
+            <div class="model-label">VEO</div>
+          </div>
+
+          <div class="model-btn" data-model="grok">
+            <img src="images/grok.png" alt="GROK">
+            <div class="model-label">GROK</div>
+          </div>
+        </div>
+
+        <!-- 생성 버튼 -->
+        <button id="generateBtn">
+          <span id="btnIcon">...</span>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- 우측 상단 메뉴 -->
+  <!-- ✅ 우측 상단 메뉴 (라이브러리 복구) -->
   <div class="top-menu">
     <div class="menu-btn" id="menuBtn">
       <span></span>
@@ -45,6 +143,7 @@
     </div>
   </div>
 
+  <!-- 메뉴 스크립트 -->
   <script>
     const menuBtn = document.getElementById("menuBtn");
     const menuDropdown = document.getElementById("menuDropdown");
@@ -69,6 +168,107 @@
         menuDropdown.classList.remove("show");
       }
     });
+  </script>
+
+  <!-- 🔥 영상 생성 로직 (기존 그대로) -->
+  <script>
+    const generateBtn = document.getElementById("generateBtn");
+    const promptInput = document.getElementById("prompt");
+    const btnIcon = document.getElementById("btnIcon");
+
+    let selectedModel = null;
+
+    document.querySelectorAll(".model-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const model = btn.dataset.model;
+
+        if (selectedModel === model) {
+          btn.classList.remove("active");
+          selectedModel = null;
+          return;
+        }
+
+        document.querySelectorAll(".model-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedModel = model;
+      });
+    });
+
+    function autoResize() {
+      promptInput.style.height = "auto";
+      promptInput.style.height = promptInput.scrollHeight + "px";
+    }
+
+    function updateButtonState() {
+      if (promptInput.value.trim().length > 0) {
+        btnIcon.textContent = "⌅";
+        generateBtn.classList.add("active");
+      } else {
+        btnIcon.textContent = "...";
+        generateBtn.classList.remove("active");
+      }
+    }
+
+    promptInput.addEventListener("input", () => {
+      autoResize();
+      updateButtonState();
+    });
+
+    async function generateVideo() {
+      const prompt = promptInput.value.trim();
+      if (!prompt) return;
+
+      if (!selectedModel) {
+        alert("모델을 선택해주세요.");
+        return;
+      }
+
+      const apiUrl =
+        selectedModel === "grok"
+          ? "/api/video2/generate"
+          : "/api/video/generate";
+
+      try {
+        generateBtn.disabled = true;
+
+        const res = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ prompt })
+        });
+
+        if (!res.ok) {
+          window.location.href = "loading_error.html";
+          return;
+        }
+
+        const data = await res.json();
+
+        window.location.href =
+          selectedModel === "grok"
+            ? `loading.html?task_id=${data.task_id}&model=video2`
+            : `loading.html?task_id=${data.task_id}&model=video`;
+
+      } catch (err) {
+        window.location.href = "loading_error.html";
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    generateBtn.addEventListener("click", generateVideo);
+
+    promptInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        generateVideo();
+      }
+    });
+
+    updateButtonState();
   </script>
 
 </body>

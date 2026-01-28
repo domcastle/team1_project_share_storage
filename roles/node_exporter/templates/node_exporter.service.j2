@@ -7,7 +7,7 @@ After=network-online.target
 Type=simple
 User={{ node_exporter_user }}
 Group={{ node_exporter_group }}
-ExecStart={{ node_exporter_install_dir }}/node_exporter --web.listen-address={{ node_exporter_listen_address }}
+ExecStart={{ node_exporter_install_dir }}/node_exporter {{ node_exporter_exec_opts }}
 Restart=always
 RestartSec=3
 

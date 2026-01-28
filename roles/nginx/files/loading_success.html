@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>영상 생성 완료</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+  </script>
+
+  <style>
+    body {
+      background: #ffffff;
+      color: #111;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .center-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .sub {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 14px;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 6px;
+      border: 1px solid #111;
+      background: #111;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 우측 상단 메뉴 -->
+  <div class="top-menu">
+    <div class="menu-btn" id="menuBtn">
+      <span></span>
+    </div>
+    <div class="menu-dropdown" id="menuDropdown">
+      <a href="#" id="libraryBtn">영상 라이브러리</a>
+      <a href="#" id="logoutBtn">로그아웃</a>
+    </div>
+  </div>
+
+  <div class="center-box">
+    <div class="title">영상 생성이 완료되었습니다</div>
+    <div class="sub">라이브러리에서 생성된 영상을 확인할 수 있습니다.</div>
+    <a href="library.html" class="login-btn">
+      라이브러리로 이동
+    </a>
+  </div>
+
+  <script>
+    const menuBtn = document.getElementById("menuBtn");
+    const menuDropdown = document.getElementById("menuDropdown");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const libraryBtn = document.getElementById("libraryBtn");
+    const goLibraryBtn = document.getElementById("goLibraryBtn");
+
+    menuBtn.addEventListener("click", () => {
+      menuDropdown.classList.toggle("show");
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+    });
+
+    libraryBtn.addEventListener("click", () => {
+      window.location.href = "library.html";
+    });
+
+    goLibraryBtn.addEventListener("click", () => {
+      window.location.href = "library.html";
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+        menuDropdown.classList.remove("show");
+      }
+    });
+  </script>
+
+</body>
+</html>

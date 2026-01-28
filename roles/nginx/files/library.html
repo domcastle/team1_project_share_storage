@@ -1,165 +1,378 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>Justic - Library</title>
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<title>Justic - Library</title>
+<link rel="stylesheet" href="css/style.css">
 
-  <!-- 로그인 체크 -->
-  <script>
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      window.location.href = "index.html";
-    }
-  </script>
+<script>
+  const token = localStorage.getItem("access_token");
+  if (!token) location.href = "index.html";
+</script>
+
+<style>
+.video-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* 🔥 썸네일 블러 배경 */
+.image-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(28px);
+  transform: scale(1.15);
+  opacity: 0.45;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 🔥 영상 블러 배경 */
+.video-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(28px);
+  transform: scale(1.15);
+  opacity: 0.45;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.video-modal-center {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.video-modal-content { display: flex; gap: 36px; }
+.short-card { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.short-title {
+  font-family: "Paperlogy", sans-serif;
+  font-weight: 600;
+  color: #fff;
+  opacity: 0.95;
+  text-align: center;
+
+  /* 👇 반응형 폰트 크기 */
+  font-size: clamp(18px, 1.8vw, 24px);
+  letter-spacing: 0.04em;
+}
+
+.short-video { width: 300px; aspect-ratio: 9/16; background:black; border-radius:14px; overflow:hidden; }
+.short-video video { width:100%; height:100%; object-fit:cover; }
+
+.youtube-btn {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  border:1px solid #dadce0;
+  border-radius:6px;
+  padding:10px 16px;
+  cursor:pointer;
+}
+.youtube-btn:hover { background:#f7f8f8; }
+.youtube-icon { width:20px; height:20px; }
+
+/* ===============================
+   제목 입력 모달
+================================ */
+.title-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+
+.title-box {
+  background: #fff;
+  padding: 24px;
+  border-radius: 14px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.title-box h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.title-box input {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.title-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.title-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+#confirmBtn {
+  background: #000;
+  color: #fff;
+}
+
+@media(max-width:900px){
+  .video-modal-content{ flex-direction:column; align-items:center; }
+}
+</style>
 </head>
+
 <body>
 
-  <!-- 우측 상단 메뉴 -->
-  <div class="top-menu">
-    <div class="menu-btn" id="menuBtn">
-      <span></span>
-    </div>
+<div class="top-menu">
+  <div class="menu-btn" id="menuBtn"><span></span></div>
+  <div class="menu-dropdown" id="menuDropdown">
+    <a href="#" id="goMainBtn">영상 생성하러 가기</a>
+    <a href="#" id="logoutBtn">로그아웃</a>
+  </div>
+</div>
 
-    <div class="menu-dropdown" id="menuDropdown">
-      <a href="#" id="goMainBtn">영상 생성하러 가기</a>
-      <a href="#" id="logoutBtn">로그아웃</a>
-    </div>
+<div class="library-container">
+
+  <!-- 라이브러리 타이틀 이미지 -->
+  <div class="library-header">
+    <img
+      src="/images/library.png"
+      alt="라이브러리"
+      class="library-image"
+    />
   </div>
 
-  <!-- 라이브러리 -->
-  <div class="library-container">
-    <h2 class="library-title">영상 라이브러리</h2>
-    <div class="video-grid" id="videoGrid"></div>
-  </div>
+  <div class="video-grid" id="videoGrid"></div>
+</div>
 
-  <!-- 메뉴 스크립트 -->
-  <script>
-    const menuBtn = document.getElementById("menuBtn");
-    const menuDropdown = document.getElementById("menuDropdown");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const goMainBtn = document.getElementById("goMainBtn");
+<script>
+const videoGrid = document.getElementById("videoGrid");
 
-    menuBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      menuDropdown.classList.toggle("show");
+/* 메뉴 */
+menuBtn.onclick = () => menuDropdown.classList.toggle("show");
+logoutBtn.onclick = () => { localStorage.removeItem("access_token"); location.href="index.html"; };
+goMainBtn.onclick = () => location.href="main.html";
+document.addEventListener("click",e=>{
+  if(!menuBtn.contains(e.target)&&!menuDropdown.contains(e.target))
+    menuDropdown.classList.remove("show");
+});
+
+/* 썸네일 */
+async function loadThumb(img, taskId){
+  try{
+    const res = await fetch(`/api/video/thumb/${taskId}.jpg`, {
+      headers:{Authorization:`Bearer ${token}`}
     });
+    img.src = URL.createObjectURL(await res.blob());
+  }catch{
+    img.src = "";
+  }
+}
 
-    goMainBtn.addEventListener("click", () => {
-      window.location.href = "main.html";
-    });
+/* 라이브러리 로드 */
+async function loadLibrary(){
+  const res = await fetch("/api/video/list",{ headers:{Authorization:`Bearer ${token}`}});
+  const data = await res.json();
 
-    logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("access_token");
-      window.location.href = "index.html";
-    });
+  if(!data.videos.length){
+    videoGrid.innerHTML = `
+      <div class="empty-library">
+        <div class="empty-main">생성된 영상이 없습니다.</div>
+        <div class="empty-sub" id="goCreate">영상 생성하러 가기</div>
+      </div>
+    `;
+    document.getElementById("goCreate").onclick = () => location.href="main.html";
+    return;
+  }
 
-    document.addEventListener("click", () => {
-      menuDropdown.classList.remove("show");
-    });
-  </script>
+  data.videos.forEach(v=>{
+    const card=document.createElement("div");
+    card.className="video-card";
 
-  <!-- 라이브러리 로직 -->
-  <script>
-    const videoGrid = document.getElementById("videoGrid");
+    const img=document.createElement("img");
+    loadThumb(img,v.task_id);
 
-    // 1️⃣ 내 영상 목록 불러오기
-    async function loadLibrary() {
-      try {
-        const res = await fetch("/api/video/list", {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
+    card.appendChild(img);
+    card.onclick=()=>openPreview(v.task_id);
+    videoGrid.appendChild(card);
+  });
+}
 
-        if (!res.ok) throw new Error("라이브러리 조회 실패");
+/* 영상 fetch */
+async function fetchVideo(taskId,type){
+  const res = await fetch(`/api/video/stream/${taskId}?type=${type}`,{
+    headers:{Authorization:`Bearer ${token}`}
+  });
+  if(!res.ok) throw new Error();
+  return URL.createObjectURL(await res.blob());
+}
 
-        const data = await res.json();
+/* ===========================
+   제목 입력 모달 + 업로드
+=========================== */
+function openTitleModal(taskId, type){
+  const modal = document.createElement("div");
+  modal.className = "title-modal";
+  modal.innerHTML = `
+    <div class="title-box">
+      <h3>YouTube 영상 업로드</h3>
+      <input type="text" id="youtubeTitle" placeholder="영상 제목을 입력해주세요">
+      <div class="title-actions">
+        <button id="cancelBtn">취소</button>
+        <button id="confirmBtn">업로드</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 
-        if (!data.videos || data.videos.length === 0) {
-          videoGrid.innerHTML = "<p>아직 생성된 영상이 없습니다.</p>";
-          return;
-        }
+  modal.querySelector("#cancelBtn").onclick = () => modal.remove();
 
-        videoGrid.innerHTML = "";
-
-        data.videos.forEach(video => {
-          const card = document.createElement("div");
-          card.className = "video-card";
-
-          card.innerHTML = `
-            <img
-              class="thumb-img"
-              src="/api/video/thumb/${video.task_id}.jpg"
-              alt="thumbnail"
-              loading="lazy"
-            />
-            <p class="video-id">${video.task_id.slice(0, 8)}</p>
-          `;
-
-          card.addEventListener("click", () => {
-            openPreview(video.task_id);
-          });
-
-          videoGrid.appendChild(card);
-        });
-
-      } catch (err) {
-        console.error(err);
-        alert("영상 라이브러리를 불러오지 못했습니다.");
-      }
+  modal.querySelector("#confirmBtn").onclick = async () => {
+    const title = modal.querySelector("#youtubeTitle").value.trim();
+    if(!title){
+      alert("제목을 입력해주세요.");
+      return;
     }
 
-    // 2️⃣ 영상 미리보기 (스트리밍)
-    async function openPreview(taskId) {
-      try {
-        const res = await fetch(`/api/video/stream/${taskId}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        if (!res.ok) throw new Error("영상 재생 실패");
-
-        const blob = await res.blob();
-        const videoUrl = URL.createObjectURL(blob);
-
-        const video = document.createElement("video");
-        video.src = videoUrl;
-        video.controls = true;
-        video.autoplay = true;
-        video.style.maxWidth = "90%";
-        video.style.maxHeight = "90%";
-
-        const modal = document.createElement("div");
-        modal.style.position = "fixed";
-        modal.style.top = 0;
-        modal.style.left = 0;
-        modal.style.right = 0;
-        modal.style.bottom = 0;
-        modal.style.background = "rgba(0,0,0,0.8)";
-        modal.style.display = "flex";
-        modal.style.alignItems = "center";
-        modal.style.justifyContent = "center";
-        modal.style.zIndex = 9999;
-
-        modal.addEventListener("click", () => {
-          URL.revokeObjectURL(videoUrl);
-          modal.remove();
-        });
-
-        modal.appendChild(video);
-        document.body.appendChild(modal);
-
-      } catch (err) {
-        console.error(err);
-        alert("영상을 재생할 수 없습니다.");
-      }
+    try{
+      const res = await fetch("/api/video/upload/youtube",{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":`Bearer ${token}`
+        },
+        body: JSON.stringify({
+          task_id: taskId,
+          type: type,
+          title: title
+        })
+      });
+      if(!res.ok) throw new Error();
+      alert("YouTube 업로드 완료! 채널에서 확인해주세요!");
+      modal.remove();
+    }catch{
+      alert("YouTube 채널이 없거나, 업로드에 실패 하였습니다.");
     }
+  };
+}
 
-    // 초기 로드
-    loadLibrary();
-  </script>
+/* 쇼츠 카드 생성 */
+async function createShort(title,taskId,type){
+  const wrap=document.createElement("div");
+  wrap.className="short-card";
 
+  const label=document.createElement("div");
+  label.className="short-title";
+  label.textContent=title;
+
+  const box=document.createElement("div");
+  box.className="short-video";
+
+  const video=document.createElement("video");
+  video.controls=true;
+
+  try{
+    video.src=await fetchVideo(taskId,type);
+  }catch{
+    label.textContent += " (없음)";
+  }
+
+  box.appendChild(video);
+
+  const btn=document.createElement("button");
+  btn.className="youtube-btn";
+  btn.innerHTML=`
+    <img class="youtube-icon"
+      src="https://upload.wikimedia.org/wikipedia/commons/f/fd/YouTube_full-color_icon_%282024%29.svg">
+    <span class="youtube-text">업로드</span>
+  `;
+  btn.onclick = () => openTitleModal(taskId, type);
+
+  wrap.append(label, box, btn);
+  wrap._videoEl = video;
+  wrap._type = type;
+  return wrap;
+}
+
+/* 🔥 미리보기 (v2 포함) */
+async function openPreview(taskId){
+  const modal=document.createElement("div");
+  modal.className="video-modal";
+
+  const imgBg=document.createElement("img");
+  imgBg.className="image-bg";
+  loadThumb(imgBg, taskId);
+
+  const videoBg=document.createElement("video");
+  videoBg.className="video-bg";
+  videoBg.muted=true;
+  videoBg.loop=true;
+  videoBg.playsInline=true;
+
+  const center=document.createElement("div");
+  center.className="video-modal-center";
+
+  const content=document.createElement("div");
+  content.className="video-modal-content";
+
+  const originalCard  = await createShort("Original", taskId, "original");
+  const processedCard = await createShort("Edited v1", taskId, "processed");
+  const processedV2   = await createShort("Edited v2", taskId, "processed_v2");
+
+  [originalCard, processedCard, processedV2].forEach(card=>{
+    const v = card._videoEl;
+    const type = card._type;
+
+    v.addEventListener("play", async ()=>{
+      videoBg.src = await fetchVideo(taskId,type);
+      videoBg.currentTime = v.currentTime;
+      imgBg.style.display="none";
+      videoBg.style.display="block";
+      videoBg.play();
+    });
+
+    v.addEventListener("pause",()=>videoBg.pause());
+    v.addEventListener("seeking",()=>videoBg.currentTime=v.currentTime);
+  });
+
+  content.append(originalCard, processedCard, processedV2);
+  center.appendChild(content);
+  modal.append(imgBg, videoBg, center);
+  document.body.appendChild(modal);
+
+  modal.onclick=()=>modal.remove();
+  content.onclick=e=>e.stopPropagation();
+}
+
+loadLibrary();
+</script>
 </body>
 </html>
+

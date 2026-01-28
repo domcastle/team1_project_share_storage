@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Success</title>
+</head>
+<body>
+  <p id="status">로그인 처리 중...</p>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("sid");
+
+    if (!sid) {
+      document.getElementById("status").innerText = "세션 ID 없음";
+    } else {
+      fetch(`http://auth.justic.store:8000/auth/session?sid=${sid}`, {
+        method: "GET",
+        credentials: "include"
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("세션 요청 실패");
+          return res.json();
+        })
+        .then(data => {
+          if (!data.access_token) {
+            throw new Error("토큰 없음");
+          }
+
+          // ✅ JWT 저장
+          localStorage.setItem("access_token", data.access_token);
+
+          // ✅ 메인 페이지로 이동
+          window.location.href = "http://justic.store:8000/main.html";
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById("status").innerText =
+            "로그인 세션 만료. 다시 로그인하세요.";
+        });
+    }
+  </script>
+</body>
+</html>

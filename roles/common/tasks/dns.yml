@@ -1,0 +1,18 @@
+# roles/common/tasks/dns.yml
+- name: Get active network connection name
+  command: nmcli -t -f NAME,DEVICE con show --active
+  register: nmcli_active
+  changed_when: false
+
+- name: Extract first active connection name
+  set_fact:
+    nmcli_conn: "{{ nmcli_active.stdout_lines[0].split(':')[0] }}"
+
+- name: Disable auto DNS
+  command: nmcli connection modify {{ nmcli_conn }} ipv4.ignore-auto-dns yes
+
+- name: Set DNS servers
+  command: nmcli connection modify {{ nmcli_conn }} ipv4.dns "8.8.8.8 1.1.1.1"
+
+- name: Restart connection
+  command: nmcli connection up {{ nmcli_conn }}

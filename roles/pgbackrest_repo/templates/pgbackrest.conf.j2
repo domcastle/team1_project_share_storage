@@ -4,6 +4,12 @@ repo1-retention-full=2
 process-max=4
 start-fast=y
 
+# log to file (for Loki/promtail)
+log-level-file=detail
+log-level-console=info
+log-path=/var/log/pgbackrest
+
+
 [{{ stanza_name }}]
 {% for n in pgbackrest_db_nodes %}
 pg{{ loop.index }}-host={{ n.host }}

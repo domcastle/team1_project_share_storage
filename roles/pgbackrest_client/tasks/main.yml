@@ -1,17 +1,22 @@
-- name: Ensure pgBackRest config dir exists
+- name: Disable PostgreSQL module
   become: true
-  file:
-    path: /etc/pgbackrest
-    state: directory
-    owner: postgres
-    group: postgres
-    mode: "0750"
+  command: dnf module disable postgresql -y
+  changed_when: false
 
-- name: Deploy pgBackRest client config
+- name: Install PGDG repository
   become: true
-  template:
-    src: pgbackrest.conf.j2
-    dest: /etc/pgbackrest/pgbackrest.conf
-    owner: postgres
-    group: postgres
-    mode: "0640"
+  dnf:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+    disable_gpg_check: true
+
+- name: Enable pgdg-common repository
+  become: true
+  command: dnf config-manager --set-enabled pgdg-common
+  changed_when: false
+
+- name: Install pgBackRest
+  become: true
+  dnf:
+    name: pgbackrest
+    state: present

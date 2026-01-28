@@ -1,0 +1,16 @@
+vrrp_instance VI_1 {
+    state {{ dr_state }}
+    interface {{ dr_keepalived_interface }}
+    virtual_router_id {{ dr_vrid }}
+    priority {{ dr_priority }}
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ dr_auth_pass }}
+    }
+
+    virtual_ipaddress {
+        {{ dr_vip }}/{{ dr_vip_cidr }}
+    }
+}

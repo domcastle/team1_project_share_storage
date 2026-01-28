@@ -17,3 +17,20 @@ grafana_prometheus_url: "http://127.0.0.1:9090"
 # Dashboard provisioning (대시보드 파일을 넣으면 자동 로드)
 grafana_dashboards_path: /var/lib/grafana/dashboards
 grafana_enable_dashboard_provisioning: true
+
+# ✅ 프로젝트에서 실제로 쓰는 대시보드만 선택적으로 배포
+# (대시보드가 많아지면 "No data"가 늘어나서 발표/운영에 불리)
+grafana_dashboards_selected:
+  # OS/서버 모니터링(노드)
+  - node-exporter-full-1860.json
+  # Prometheus 자체 상태
+  - prometheus-stats-3662.json
+  # Loki 로그(기본)
+  - loki-logs.json
+  # Loki 로그 뷰어(라벨: host/job 기준)
+  - logviewer.json
+  # pgBackRest 백업 상태(textfile collector 기반)
+  - dbbackup_collecter.json
+
+# Datasource: Loki
+grafana_loki_url: "http://127.0.0.1:3100"

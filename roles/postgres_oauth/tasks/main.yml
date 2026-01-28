@@ -1,0 +1,135 @@
+---
+# roles/postgres_oauth/tasks/main.yml
+# Patroni HA 환경 대응: Leader 노드에서만 DDL 실행
+
+# -------------------------------------------------
+# 1) Patroni Leader 탐지
+# -------------------------------------------------
+- name: Detect Patroni leader via REST API (cluster-wide)
+  uri:
+    url: "http://{{ hostvars[item].ansible_host }}:8008/leader"
+    method: GET
+    status_code: 200
+    timeout: 2
+  register: patroni_leader_probe
+  ignore_errors: true
+  loop: "{{ groups['pgsql_db'] }}"
+  run_once: true
+
+- name: Set Patroni leader fact
+  set_fact:
+    patroni_leader: "{{ item.item }}"
+  when: item.status == 200
+  loop: "{{ patroni_leader_probe.results }}"
+  run_once: true
+
+- name: Fail if Patroni leader not detected
+  fail:
+    msg: "Patroni Leader could not be detected via REST API"
+  when: patroni_leader is not defined
+  run_once: true
+
+- name: Show detected Patroni leader
+  debug:
+    msg: "Detected Patroni Leader: {{ patroni_leader }}"
+  run_once: true
+
+# -------------------------------------------------
+# 2) oauth_user 생성
+# -------------------------------------------------
+- name: Ensure oauth_user exists
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_user:
+    name: "{{ oauth_db_user }}"
+    password: "{{ oauth_db_password }}"
+    state: present
+
+# -------------------------------------------------
+# 3) oauth_db 생성 (임시 owner = postgres)
+# -------------------------------------------------
+- name: Ensure oauth_db exists
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_db:
+    name: "{{ oauth_db_name }}"
+    encoding: UTF8
+    state: present
+
+# -------------------------------------------------
+# 4) oauth_db 소유주 변경 (핵심)
+# -------------------------------------------------
+- name: Change oauth_db owner to oauth_user
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: postgres
+    query: "ALTER DATABASE {{ oauth_db_name }} OWNER TO {{ oauth_db_user }};"
+
+# -------------------------------------------------
+# 5) OAuth 테이블 생성 (sql 파일만 사용)
+# -------------------------------------------------
+- name: Create OAuth tables from sql file
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: "{{ oauth_db_name }}"
+    query: "{{ lookup('file', 'oauth_tables.sql') }}"
+
+# -------------------------------------------------
+# 6) 테이블 소유주 변경
+# -------------------------------------------------
+- name: Change OAuth table owners to oauth_user
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: "{{ oauth_db_name }}"
+    query: |
+      DO $$
+      DECLARE r RECORD;
+      BEGIN
+        FOR r IN
+          SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+        LOOP
+          EXECUTE format(
+            'ALTER TABLE public.%I OWNER TO {{ oauth_db_user }}',
+            r.tablename
+          );
+        END LOOP;
+      END$$;
+
+# -------------------------------------------------
+# 7) 시퀀스 소유주 변경
+# -------------------------------------------------
+- name: Change OAuth sequence owners to oauth_user
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: "{{ oauth_db_name }}"
+    query: |
+      DO $$
+      DECLARE r RECORD;
+      BEGIN
+        FOR r IN
+          SELECT sequence_name
+          FROM information_schema.sequences
+          WHERE sequence_schema = 'public'
+        LOOP
+          EXECUTE format(
+            'ALTER SEQUENCE public.%I OWNER TO {{ oauth_db_user }}',
+            r.sequence_name
+          );
+        END LOOP;
+      END$$;

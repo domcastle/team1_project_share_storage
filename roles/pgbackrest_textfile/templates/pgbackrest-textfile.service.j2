@@ -1,0 +1,8 @@
+[Unit]
+Description=Generate pgBackRest metrics for node_exporter textfile collector
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PGBR_STANZA={{ stanza_name }}
+ExecStart=/usr/local/bin/pgbackrest_textfile.py

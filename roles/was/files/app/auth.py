@@ -1,5 +1,6 @@
+# app/auth.py
 from typing import Optional
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException   # ✅ HTTPException 추가
 from fastapi.responses import RedirectResponse
 import secrets
 from datetime import datetime, timedelta
@@ -8,7 +9,7 @@ from sqlalchemy import text
 from config import *
 from db import AsyncSessionLocal, redis_client
 from utils import state_key, login_session_key, safe_redirect
-from google import exchange_token, fetch_userinfo
+from google_auth import exchange_token, fetch_userinfo
 from security import create_jwt
 
 router = APIRouter(tags=["auth"])
@@ -22,14 +23,28 @@ async def google_login():
     state = secrets.token_urlsafe(16)
     redis_client.setex(state_key(state), STATE_TTL_SECONDS, "1")
 
+    scopes = [
+        "openid",
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/youtube.upload",  # ✅ 업로드 scope
+    ]
+
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "response_type": "code",
-        "scope": "openid email profile",
+        "scope": " ".join(scopes),
+
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "state": state,
+
+        # ✅ refresh_token을 최대한 확실히 받기 위한 조합
         "access_type": "offline",
-        "prompt": "select_account",
+        "prompt": "consent",
+
+        # ✅ 이전에 승인된 scope를 자동 합치지 않게(새 scope 강제 목적)
+        # (여기서 true/false는 상황 따라 다르지만, 새 scope 강제에는 false가 안정적)
+        "include_granted_scopes": "false",
     }
 
     from urllib.parse import urlencode
@@ -151,6 +166,7 @@ async def google_callback(
     return RedirectResponse(
         safe_redirect(FRONTEND_SUCCESS_URL, {"sid": sid})
     )
+
 
 # ======================================================
 # 3. Login Session (1회용)

@@ -4,38 +4,96 @@
 # =============================
 
 - name: Install nginx
-  become: yes
-  yum:
+  ansible.builtin.yum:
     name: nginx
     state: present
 
+- name: Deploy nginx main config
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
 - name: Enable and start nginx
-  become: yes
-  systemd:
+  ansible.builtin.systemd:
     name: nginx
     enabled: yes
     state: started
+
+
+# =============================
+# WebSocket map
+# =============================
+
+- name: Create nginx maps directory
+  ansible.builtin.file:
+    path: /etc/nginx/maps
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy nginx websocket map
+  ansible.builtin.template:
+    src: websocket.map.j2
+    dest: /etc/nginx/maps/websocket.map.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+
+# =============================
+# Let's Encrypt ACL (핵심)
+# =============================
+
+- name: Install acl package
+  ansible.builtin.yum:
+    name: acl
+    state: present
+
+# - name: Allow nginx to read letsencrypt certs
+#   ansible.posix.acl:
+#     path: /etc/letsencrypt
+#     entity: nginx
+#     etype: user
+#     permissions: rX
+#     recursive: yes
+#     state: present
+
+# - name: Ensure default ACL for nginx on letsencrypt
+#   ansible.posix.acl:
+#     path: /etc/letsencrypt
+#     entity: nginx
+#     etype: user
+#     permissions: rX
+#     default: yes
+#     recursive: yes
+#     state: present
+
 
 # =============================
 # Web Root Directory
 # =============================
 
 - name: Ensure web root directory exists
-  become: yes
-  file:
+  ansible.builtin.file:
     path: /usr/share/nginx/html
     state: directory
     owner: nginx
     group: nginx
     mode: "0755"
 
+
 # =============================
-# Auth Server Reverse Proxy
+# Reverse Proxy / Web
 # =============================
 
-- name: Deploy FastAPI reverse proxy config (auth.justic.store)
-  become: yes
-  template:
+- name: Deploy FastAPI reverse proxy config
+  ansible.builtin.template:
     src: fastapi.conf.j2
     dest: /etc/nginx/conf.d/fastapi.conf
     owner: root
@@ -43,13 +101,8 @@
     mode: "0644"
   notify: reload nginx
 
-# =============================
-# Web Server (justic.store)
-# =============================
-
-- name: Deploy web nginx config (justic.store)
-  become: yes
-  template:
+- name: Deploy web nginx config
+  ansible.builtin.template:
     src: web.conf.j2
     dest: /etc/nginx/conf.d/web.conf
     owner: root
@@ -57,60 +110,68 @@
     mode: "0644"
   notify: reload nginx
 
+- name: Deploy MinIO nginx config
+  ansible.builtin.template:
+    src: minio.conf.j2
+    dest: /etc/nginx/conf.d/minio.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+- name: Deploy HTTPS config
+  ansible.builtin.template:
+    src: https.conf.j2
+    dest: /etc/nginx/conf.d/https.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+
 # =============================
-# Deploy Web Static Files (HTML)
+# Static Files (HTML / CSS / IMAGES)
 # =============================
 
-- name: Deploy web html files
-  become: yes
-  copy:
-    src: "{{ item }}"
+# ✅ 정적 파일 전체 배포 (권한 지정 ❌)
+- name: Deploy web static files
+  ansible.builtin.copy:
+    src: .
     dest: /usr/share/nginx/html/
     owner: nginx
     group: nginx
-    mode: "0644"
-  loop:
-    - index.html
-    - main.html
-    - library.html
-    - login_success.html
 
-# =============================
-# Deploy Web Static Files (CSS)
-# =============================
-
-- name: Deploy web css directory
-  become: yes
-  copy:
-    src: css/
-    dest: /usr/share/nginx/html/css/
+# ✅ 디렉토리 권한 보장 (images 접근 문제 해결 핵심)
+- name: Fix web directory permissions
+  ansible.builtin.file:
+    path: /usr/share/nginx/html
+    state: directory
     owner: nginx
     group: nginx
     mode: "0755"
+    recurse: yes
+
 
 # =============================
 # Keepalived
 # =============================
 
 - name: Install keepalived
-  become: yes
-  yum:
+  ansible.builtin.yum:
     name: keepalived
     state: present
 
 - name: Deploy keepalived config
-  become: yes
-  template:
+  ansible.builtin.template:
     src: keepalived.conf.j2
     dest: /etc/keepalived/keepalived.conf
     owner: root
     group: root
     mode: "0644"
-  notify: Restart keepalived
+  notify: restart keepalived
 
 - name: Enable and start keepalived
-  become: yes
-  systemd:
+  ansible.builtin.systemd:
     name: keepalived
     enabled: yes
     state: started

@@ -1,65 +1,116 @@
 #!/usr/bin/env python3
-import os, json, time, subprocess
+import os
+import json
+import time
+import tempfile
+import subprocess
+
 import redis
 from minio import Minio
 
 REDIS_HOST = os.getenv("REDIS_HOST", "10.1.1.10")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_QUEUE = os.getenv("REDIS_QUEUE", "video_processing_jobs")
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "10.1.1.50:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "justicadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "justicadmin123")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "videos")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 
-QUEUE = "video_processing_jobs"
-FF = "/opt/ai/scripts/run_ffmpeg_shorts.sh"
+FFMPEG_SCRIPT = "/opt/ai/scripts/run_ffmpeg_shorts.sh"
+CAPTION_SCRIPT = "/opt/ai/worker/generate_caption.py"
 
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-m = Minio(
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    decode_responses=True,
+)
+
+minio = Minio(
     MINIO_ENDPOINT,
     access_key=MINIO_ACCESS_KEY,
     secret_key=MINIO_SECRET_KEY,
     secure=False,
 )
 
-def download(obj, path):
-    o = m.get_object(MINIO_BUCKET, obj)
-    try:
-        with open(path, "wb") as f:
-            for c in o.stream(1024 * 1024):
-                f.write(c)
-    finally:
-        o.close()
-        o.release_conn()
 
-def upload(obj, path):
-    m.fput_object(MINIO_BUCKET, obj, path, content_type="video/mp4")
+def download_object(bucket, key, dst):
+    obj = minio.get_object(bucket, key)
+    with open(dst, "wb") as f:
+        for c in obj.stream(1024 * 1024):
+            f.write(c)
+    obj.close()
+    obj.release_conn()
+
+
+def upload_object(bucket, key, src):
+    minio.fput_object(bucket, key, src, content_type="video/mp4")
+
+
+def process_job(job: dict):
+    input_key = job["input_key"]
+    output_key = job["output_key"]
+
+    # 🔑 핵심: variant (기본 v1)
+    variant = job.get("variant", "v1")
+
+    tmp_input = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    tmp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+
+    try:
+        # 1️⃣ 원본 다운로드
+        download_object(MINIO_BUCKET, input_key, tmp_input)
+
+        # 2️⃣ LLM 자막 생성 (variant 전달)
+        env = os.environ.copy()
+        env["CAPTION_VARIANT"] = variant
+
+        caption = subprocess.check_output(
+            ["python3", CAPTION_SCRIPT, tmp_input],
+            text=True,
+            timeout=600,
+            env=env,              # 👈 여기 중요
+        ).strip()
+
+        if not caption:
+            caption = "편집된 영상입니다"
+
+        print(f"📝 caption ({variant}) =", caption)
+
+        # 3️⃣ ffmpeg 편집
+        subprocess.run(
+            [
+                FFMPEG_SCRIPT,
+                tmp_input,
+                tmp_output,
+                "",
+                "",
+                caption,
+            ],
+            check=True,
+        )
+
+        # 4️⃣ 결과 업로드
+        upload_object(MINIO_BUCKET, output_key, tmp_output)
+
+    finally:
+        for f in (tmp_input, tmp_output):
+            if os.path.exists(f):
+                os.remove(f)
+
 
 def main():
+    print("🚀 AI Worker started")
+
     while True:
-        _, raw = r.blpop(QUEUE)
-        job = json.loads(raw)
-
-        task_id = job["task_id"]
-        inp = job["input"]
-        out = job["output"]
-
-        local_input = f"/tmp/{task_id}_input.mp4"
-        local_output = f"/tmp/{task_id}_output.mp4"
-
+        _, raw = redis_client.brpop(REDIS_QUEUE)
         try:
-            download(inp, local_input)
-            subprocess.run([FF, local_input, local_output], check=True)
-            upload(out, local_output)
-        finally:
-            for p in (local_input, local_output):
-                if os.path.exists(p):
-                    try:
-                        os.remove(p)
-                    except:
-                        pass
+            job = json.loads(raw)
+            process_job(job)
+        except Exception as e:
+            print("❌ job failed:", e)
+        time.sleep(0.5)
 
-        time.sleep(1)
 
 if __name__ == "__main__":
     main()

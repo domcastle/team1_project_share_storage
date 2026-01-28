@@ -1,57 +1,34 @@
 ---
 ###############################################################################
-# 0. 변수 (role 기본값)
+# 0. 기본 변수
 ###############################################################################
-- name: Set AI worker vars
+- name: Set ai worker vars
   set_fact:
-    ai_user: ansible
-    ai_group: ansible
     ai_base_dir: /opt/ai
     ai_scripts_dir: /opt/ai/scripts
-    ai_output_dir: /opt/ai/output
+    ai_user: ansible
+    ai_group: ansible
 
 
 ###############################################################################
-# 1. Cleanup / 유지보수
+# 1. 시스템 패키지
 ###############################################################################
-- name: Deploy AI cleanup script
-  template:
-    src: cleanup_ai.sh.j2
-    dest: /usr/local/bin/cleanup_ai.sh
-    owner: root
-    group: root
-    mode: "0755"
-
-- name: Register AI cleanup cron
-  cron:
-    name: "AI temp cleanup"
-    job: "/usr/local/bin/cleanup_ai.sh >> /var/log/ai_cleanup.log 2>&1"
-    minute: "0"
-    hour: "3"
-
-
-###############################################################################
-# 2. 기본 패키지
-###############################################################################
-- name: Install base system packages
+- name: Install system packages
   dnf:
     name:
-      - git
-      - curl
-      - wget
-      - unzip
       - python3
       - python3-pip
-      - python3-devel
-      - gcc
-      - jq
+      - ffmpeg
+      - espeak-ng
+      - fontconfig
+      - google-noto-sans-cjk-ttc-fonts
     state: present
 
 
 ###############################################################################
-# 3. Python 패키지 (중요)
+# 2. Python 패키지
 ###############################################################################
-- name: Install Python packages for AI worker
+- name: Install python packages
   pip:
     name:
       - redis
@@ -60,24 +37,9 @@
 
 
 ###############################################################################
-# 4. FFmpeg 설치
+# 3. 디렉토리 생성
 ###############################################################################
-- name: Enable RPM Fusion free
-  dnf:
-    name: https://download1.rpmfusion.org/free/el/rpmfusion-free-release-{{ ansible_distribution_major_version }}.noarch.rpm
-    state: present
-
-- name: Install FFmpeg
-  dnf:
-    name: ffmpeg
-    state: present
-    allowerasing: true
-
-
-###############################################################################
-# 5. 디렉토리 레이아웃
-###############################################################################
-- name: Create AI directories
+- name: Create ai directories
   file:
     path: "{{ item }}"
     state: directory
@@ -87,15 +49,19 @@
   loop:
     - "{{ ai_base_dir }}"
     - "{{ ai_scripts_dir }}"
-    - "{{ ai_output_dir }}"
-    - "{{ ai_base_dir }}/logs"
-    - "{{ ai_base_dir }}/status"
 
+- name: Create ai worker directory
+  file:
+    path: /opt/ai/worker
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: "0755"
 
 ###############################################################################
-# 6. 실행 스크립트 (FFmpeg)
+# 4. FFmpeg 스크립트 배포
 ###############################################################################
-- name: Deploy FFmpeg Shorts script
+- name: Deploy ffmpeg script
   template:
     src: run_ffmpeg_shorts.sh.j2
     dest: "{{ ai_scripts_dir }}/run_ffmpeg_shorts.sh"
@@ -105,9 +71,9 @@
 
 
 ###############################################################################
-# 7. Redis Worker 코드
+# 5. worker.py 배포
 ###############################################################################
-- name: Deploy AI worker python script
+- name: Deploy ai worker
   template:
     src: worker.py.j2
     dest: "{{ ai_base_dir }}/worker.py"
@@ -117,7 +83,7 @@
 
 
 ###############################################################################
-# 8. systemd 서비스
+# 6. systemd 서비스 배포
 ###############################################################################
 - name: Deploy ai-worker systemd service
   template:
@@ -127,6 +93,10 @@
     group: root
     mode: "0644"
 
+
+###############################################################################
+# 7. systemd reload & start
+###############################################################################
 - name: Reload systemd
   systemd:
     daemon_reload: yes
@@ -136,3 +106,106 @@
     name: ai-worker
     enabled: yes
     state: restarted
+
+########################################
+# 8. 폰트 설치
+########################################
+- name: Install font tools
+  dnf:
+    name:
+      - unzip
+      - wget
+      - fontconfig
+    state: present
+
+- name: Create temp extract directory
+  file:
+    path: /tmp/paperlogy
+    state: directory
+    mode: "0755"
+
+- name: Create system font directory
+  file:
+    path: /usr/share/fonts/paperlogy
+    state: directory
+    mode: "0755"
+
+- name: Download Paperlogy font zip
+  get_url:
+    url: https://github.com/Freesentation/paperlogy/raw/refs/heads/main/Paperlogy-1.000.zip
+    dest: /tmp/Paperlogy-1.000.zip
+    mode: "0644"
+
+- name: Unzip Paperlogy fonts
+  unarchive:
+    src: /tmp/Paperlogy-1.000.zip
+    dest: /tmp/paperlogy
+    remote_src: yes
+
+# ✅ 구조 무관, 무조건 성공
+- name: Copy all Paperlogy ttf fonts
+  shell: |
+    find /tmp/paperlogy -type f -iname "*.ttf" -exec cp {} /usr/share/fonts/paperlogy/ \;
+
+- name: Rebuild font cache
+  command: fc-cache -fv
+  changed_when: false
+########################################
+# llm
+########################################
+
+- name: Install required system packages for ollama
+  dnf:
+    name:
+      - zstd
+      - curl
+    state: present
+
+- name: Check ollama binary exists
+  stat:
+    path: /usr/bin/ollama
+  register: ollama_bin
+
+- name: Install ollama (if not exists)
+  shell: curl -fsSL https://ollama.com/install.sh | sh
+  when: not ollama_bin.stat.exists
+
+- name: Enable and start ollama service
+  systemd:
+    name: ollama
+    enabled: yes
+    state: started
+
+- name: Wait for ollama API
+  uri:
+    url: http://127.0.0.1:11434
+    method: GET
+    status_code: 200
+  register: ollama_api
+  retries: 10
+  delay: 3
+  until: ollama_api.status == 200
+
+########################################
+# qwen2.5vl
+########################################
+- name: Check qwen2.5vl model exists
+  shell: ollama list | grep -q "^qwen2.5vl"
+  register: qwen_vl_exists
+  failed_when: false
+  changed_when: false
+
+- name: Pull qwen2.5vl model (7b)
+  shell: ollama pull qwen2.5vl:7b
+  when: qwen_vl_exists.rc != 0
+
+
+
+
+- name: Deploy generate_caption.py
+  copy:
+    src: generate_caption.py
+    dest: /opt/ai/worker/generate_caption.py
+    owner: ansible
+    group: ansible
+    mode: "0755"

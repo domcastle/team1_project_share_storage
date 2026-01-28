@@ -83,7 +83,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_LOKI}",
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "custom": {},
@@ -124,7 +124,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(count_over_time({job=\"$app\"} |= \"$search\" [$__interval]))",
+          "expr": "sum(count_over_time({host=~\"$host\", job=~\"$job\"} |~ \"(?i)$search\" [$__interval]))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -173,7 +173,7 @@
       }
     },
     {
-      "datasource": "${DS_LOKI}",
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -196,7 +196,7 @@
       },
       "targets": [
         {
-          "expr": "{job=\"$app\"} |= \"$search\" | logfmt",
+          "expr": "{host=~\"$host\", job=~\"$job\"} |~ \"(?i)$search\"",
           "hide": false,
           "legendFormat": "",
           "refId": "A"
@@ -212,50 +212,36 @@
   "refresh": false,
   "schemaVersion": 26,
   "style": "dark",
-  "tags": [],
+  "tags": [
+    "logs",
+    "loki"
+  ],
   "templating": {
     "list": [
       {
-        "allValue": null,
-        "current": {},
-        "datasource": "${DS_LOKI}",
-        "definition": "label_values(job)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "App",
-        "multi": false,
-        "name": "app",
-        "options": [],
-        "query": "label_values(job)",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
+        "name": "host",
         "type": "query",
-        "useTags": false
+        "label": "host",
+        "query": "label_values(host)",
+        "datasource": "Loki",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true
       },
       {
-        "current": {
-          "selected": false,
-          "text": "",
-          "value": ""
-        },
-        "hide": 0,
-        "label": "String Match",
+        "name": "job",
+        "type": "query",
+        "label": "job",
+        "query": "label_values(job)",
+        "datasource": "Loki",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true
+      },
+      {
         "name": "search",
-        "options": [
-          {
-            "selected": true,
-            "text": "",
-            "value": ""
-          }
-        ],
-        "query": "",
-        "skipUrlSync": false,
-        "type": "textbox"
+        "type": "textbox",
+        "label": "contains"
       }
     ]
   },
@@ -278,7 +264,7 @@
     ]
   },
   "timezone": "",
-  "title": "Logs / App",
+  "title": "Logs (Loki)",
   "uid": "liz0yRCZz",
   "version": 13
 }

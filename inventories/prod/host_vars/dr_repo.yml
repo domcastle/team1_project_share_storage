@@ -1,0 +1,11 @@
+promtail_job_label: "pgbackrest"
+
+promtail_log_paths:
+  - /var/log/messages
+  - /var/log/secure
+  - /var/log/audit/audit.log
+  - /var/log/pgbackrest/pgbackrest.log
+
+# node_exporter textfile collector 활성화 (drrepo만)
+node_exporter_textfile_enabled: true
+node_exporter_textfile_dir: "/var/lib/node_exporter/textfile_collector"

@@ -6,7 +6,7 @@
 # ============================================
 
 - name: Enable EPEL repository
-  yum:
+  ansible.builtin.dnf:
     name: epel-release
     state: present
 
@@ -16,39 +16,63 @@
 # ============================================
 
 - name: Install system packages (Python, Redis client, PostgreSQL client)
-  yum:
+  ansible.builtin.dnf:
     name:
       - python3
       - python3-pip
-      - redis              # redis-cli (OAuth state / session 검증용)
-      - postgresql         # psql client (DB 연결 검증용)
+      - redis
+      - postgresql
       - tar
       - xz
     state: present
 
 
 # ============================================
-# Install ffmpeg (Static Binary 방식 ⭐ 핵심)
+# Install ffmpeg (Static Binary 방식 ⭐ 안정화 버전)
 # ============================================
 
-- name: Download ffmpeg static binary
-  get_url:
-    url: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-    dest: /tmp/ffmpeg.tar.xz
-    mode: '0644'
+- name: Download ffmpeg static binary (robust, no hang)
+  ansible.builtin.shell: |
+    set -e
+    timeout 300 curl -L \
+      --retry 5 \
+      --retry-delay 5 \
+      --fail \
+      --silent \
+      --show-error \
+      -o /tmp/ffmpeg.tar.xz \
+      https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+  args:
+    creates: /tmp/ffmpeg.tar.xz
+
+- name: Verify ffmpeg archive exists
+  ansible.builtin.stat:
+    path: /tmp/ffmpeg.tar.xz
+  register: ffmpeg_archive
+
+- name: Fail if ffmpeg download failed
+  ansible.builtin.fail:
+    msg: "ffmpeg download failed or timed out"
+  when: not ffmpeg_archive.stat.exists
 
 - name: Extract ffmpeg archive
-  unarchive:
+  ansible.builtin.unarchive:
     src: /tmp/ffmpeg.tar.xz
     dest: /opt
     remote_src: yes
 
 - name: Install ffmpeg binary
-  shell: |
-    cp /opt/ffmpeg-*-static/ffmpeg /usr/local/bin/ffmpeg
+  ansible.builtin.shell: |
+    set -e
+    FFMPEG_DIR=$(find /opt -maxdepth 1 -type d -name "ffmpeg-*-static" | head -n 1)
+    cp "$FFMPEG_DIR/ffmpeg" /usr/local/bin/ffmpeg
     chmod +x /usr/local/bin/ffmpeg
   args:
     creates: /usr/local/bin/ffmpeg
+
+- name: Verify ffmpeg installation
+  ansible.builtin.command: /usr/local/bin/ffmpeg -version
+  changed_when: false
 
 
 # ============================================
@@ -56,20 +80,20 @@
 # ============================================
 
 - name: Create WAS base directory
-  file:
+  ansible.builtin.file:
     path: /opt/was
     state: directory
     owner: ansible
     group: ansible
-    mode: '0755'
+    mode: "0755"
 
 - name: Create WAS app directory
-  file:
+  ansible.builtin.file:
     path: /opt/was/app
     state: directory
     owner: ansible
     group: ansible
-    mode: '0755'
+    mode: "0755"
 
 
 # ============================================
@@ -77,7 +101,7 @@
 # ============================================
 
 - name: Copy WAS application files
-  copy:
+  ansible.builtin.copy:
     src: app/
     dest: /opt/was/app/
     owner: ansible
@@ -85,13 +109,28 @@
   notify: restart was
 
 - name: Create Python virtualenv
-  command: python3 -m venv /opt/was/venv
+  ansible.builtin.command: python3 -m venv /opt/was/venv
   args:
     creates: /opt/was/venv/bin/activate
 
 - name: Install Python dependencies
-  pip:
+  ansible.builtin.pip:
     requirements: /opt/was/app/requirements.txt
+    virtualenv: /opt/was/venv
+    virtualenv_python: python3
+
+
+# ============================================
+# Google OAuth / YouTube API
+# ============================================
+
+- name: Install Google OAuth & YouTube API libraries
+  ansible.builtin.pip:
+    name:
+      - google-auth
+      - google-auth-oauthlib
+      - google-auth-httplib2
+      - google-api-python-client
     virtualenv: /opt/was/venv
     virtualenv_python: python3
 
@@ -101,16 +140,16 @@
 # ============================================
 
 - name: Copy WAS environment file
-  copy:
+  ansible.builtin.copy:
     src: was.env
     dest: /etc/was.env
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
   notify: restart was
 
 - name: Install WAS systemd service
-  template:
+  ansible.builtin.template:
     src: was.service.j2
     dest: /etc/systemd/system/was.service
   notify:
@@ -118,7 +157,7 @@
     - restart was
 
 - name: Enable and start WAS service
-  systemd:
+  ansible.builtin.systemd:
     name: was
     enabled: yes
     state: started
@@ -129,25 +168,25 @@
 # ============================================
 
 - name: Create video base directory
-  file:
+  ansible.builtin.file:
     path: /var/lib/veo
     state: directory
     owner: ansible
     group: ansible
-    mode: '0755'
+    mode: "0755"
 
 - name: Create video storage directory
-  file:
+  ansible.builtin.file:
     path: /var/lib/veo/videos
     state: directory
     owner: ansible
     group: ansible
-    mode: '0755'
+    mode: "0755"
 
 - name: Create thumbnail storage directory
-  file:
+  ansible.builtin.file:
     path: /var/lib/veo/thumbs
     state: directory
     owner: ansible
     group: ansible
-    mode: '0755'
+    mode: "0755"

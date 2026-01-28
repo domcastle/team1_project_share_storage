@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - "{{ prometheus_conf_dir }}/rules/*.yml"
+
 scrape_configs:
 {% for svc in service_scrape_definitions %}
   - job_name: "{{ svc.job_name }}"

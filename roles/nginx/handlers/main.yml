@@ -5,7 +5,7 @@
     name: nginx
     state: reloaded
 
-- name: Restart keepalived
+- name: restart keepalived
   become: yes
   service:
     name: keepalived

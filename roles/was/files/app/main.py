@@ -3,12 +3,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import router as auth_router
 from video import router as video_router
+from video2 import router as video2_router
 from health import router as health_router
+
+from minio_client import ensure_bucket
 
 app = FastAPI(
     title="Justic API Server",
     version="3.5",
 )
+
+# =========================
+# Startup (MinIO bucket ensure)
+# =========================
+@app.on_event("startup")
+def startup_event():
+    ensure_bucket()
 
 # =========================
 # CORS 설정
@@ -35,6 +45,8 @@ app.add_middleware(
 # =========================
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(video_router, prefix="/api/video", tags=["video"])
+app.include_router(video2_router, prefix="/api/video2", tags=["video2"])
+
 app.include_router(health_router, prefix="/health", tags=["health"])
 
 # =========================

@@ -87,3 +87,40 @@
     - /opt/apps
     - /opt/scripts
     - /var/log/apps
+
+# ########################################
+# # 7. DNS 설정 (Google DNS 고정)
+# ########################################
+
+# - name: Disable NetworkManager DNS management
+#   file:
+#     path: /etc/NetworkManager/NetworkManager.conf
+#     section: main
+#     option: dns
+#     value: none
+#   notify: Restart NetworkManager
+#   ignore_errors: true
+
+# - name: Remove existing resolv.conf if symlink
+#   file:
+#     path: /etc/resolv.conf
+#     state: absent
+#   when: ansible_facts['resolv_conf']['exists'] is defined
+#   ignore_errors: true
+
+# - name: Create resolv.conf with Google DNS
+#   copy:
+#     dest: /etc/resolv.conf
+#     content: |
+#       nameserver 8.8.8.8
+#     owner: root
+#     group: root
+#     mode: '0644'
+
+# - name: Make resolv.conf immutable
+#   command: chattr +i /etc/resolv.conf
+#   ignore_errors: true
+
+- name: Configure DNS for redis servers
+  import_tasks: dns.yml
+  when: inventory_hostname == 'redis1'

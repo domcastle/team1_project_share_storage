@@ -6,7 +6,7 @@
 patroni_scope: "pgsql-cluster"
 patroni_namespace: "/patroni/"
 
-# DR-HA가 바인딩 DBNET IP (2nd NIC)
+# DR-HA가 바인딩할 DBNET IP (2nd NIC)
 patroni_bind_ip: "10.1.5.80"
 patroni_restapi_port: 8008
 patroni_postgres_port: 5432

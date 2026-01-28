@@ -1,19 +1,19 @@
 - name: Install Redis
-  dnf:
+  ansible.builtin.dnf:
     name: redis
     state: present
 
 - name: Configure redis.conf
-  template:
+  ansible.builtin.template:
     src: redis.conf.j2
     dest: /etc/redis/redis.conf
     owner: redis
     group: redis
-    mode: '0644'
+    mode: "0644"
   notify: restart redis
 
 - name: Enable and start Redis
-  systemd:
+  ansible.builtin.systemd:
     name: redis
     enabled: yes
     state: started

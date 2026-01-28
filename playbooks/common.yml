@@ -1,0 +1,5 @@
+- name: Common setup
+  hosts: monitoring
+  become: true
+  roles:
+    - common

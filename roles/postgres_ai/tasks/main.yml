@@ -1,0 +1,135 @@
+---
+# roles/postgres_ai/tasks/main.yml
+# Patroni HA 환경 대응: Leader 노드에서만 DDL 실행
+
+# -------------------------------------------------
+# 1) Patroni Leader 탐지 (REST API)
+# -------------------------------------------------
+- name: Detect Patroni leader via REST API (cluster-wide)
+  uri:
+    url: "http://{{ hostvars[item].ansible_host }}:8008/leader"
+    method: GET
+    status_code: 200
+    timeout: 2
+  register: patroni_leader_probe
+  ignore_errors: true
+  loop: "{{ groups['pgsql_db'] }}"
+  run_once: true
+
+- name: Set Patroni leader fact
+  set_fact:
+    patroni_leader: "{{ item.item }}"
+  when: item.status == 200
+  loop: "{{ patroni_leader_probe.results }}"
+  run_once: true
+
+- name: Fail if Patroni leader not detected
+  fail:
+    msg: "Patroni Leader could not be detected via REST API"
+  when: patroni_leader is not defined
+  run_once: true
+
+- name: Show detected Patroni leader
+  debug:
+    msg: "Detected Patroni Leader: {{ patroni_leader }}"
+  run_once: true
+
+# -------------------------------------------------
+# 2) ai_user 생성 (Leader)
+# -------------------------------------------------
+- name: Ensure ai_user exists
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_user:
+    name: "{{ ai_db_user }}"
+    password: "{{ ai_db_password }}"
+    state: present
+
+# -------------------------------------------------
+# 3) ai_db 생성 (owner = postgres 임시)
+# -------------------------------------------------
+- name: Ensure ai_db exists
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_db:
+    name: "{{ ai_db_name }}"
+    encoding: UTF8
+    state: present
+
+# -------------------------------------------------
+# 4) ai_db 소유주를 ai_user로 변경 (핵심)
+# -------------------------------------------------
+- name: Change ai_db owner to ai_user
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: postgres
+    query: "ALTER DATABASE {{ ai_db_name }} OWNER TO {{ ai_db_user }};"
+
+# -------------------------------------------------
+# 5) AI 테이블 생성 (sql 파일만 사용)
+# -------------------------------------------------
+- name: Create AI tables from sql file
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: "{{ ai_db_name }}"
+    query: "{{ lookup('file', 'ai_tables.sql') }}"
+
+# -------------------------------------------------
+# 6) 테이블 소유주를 ai_user로 변경
+# -------------------------------------------------
+- name: Change AI table owners to ai_user
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: "{{ ai_db_name }}"
+    query: |
+      DO $$
+      DECLARE r RECORD;
+      BEGIN
+        FOR r IN
+          SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+        LOOP
+          EXECUTE format(
+            'ALTER TABLE public.%I OWNER TO {{ ai_db_user }}',
+            r.tablename
+          );
+        END LOOP;
+      END$$;
+
+# -------------------------------------------------
+# 7) 시퀀스 소유주를 ai_user로 변경
+# -------------------------------------------------
+- name: Change AI sequence owners to ai_user
+  become: true
+  become_user: postgres
+  delegate_to: "{{ patroni_leader }}"
+  run_once: true
+  community.postgresql.postgresql_query:
+    db: "{{ ai_db_name }}"
+    query: |
+      DO $$
+      DECLARE r RECORD;
+      BEGIN
+        FOR r IN
+          SELECT sequence_name
+          FROM information_schema.sequences
+          WHERE sequence_schema = 'public'
+        LOOP
+          EXECUTE format(
+            'ALTER SEQUENCE public.%I OWNER TO {{ ai_db_user }}',
+            r.sequence_name
+          );
+        END LOOP;
+      END$$;

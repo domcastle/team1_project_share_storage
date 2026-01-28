@@ -20,3 +20,6 @@ pgsql_backends:
   - name: dbb
     ip: 10.1.5.30
     pg_port: 5432
+  - name: drha01
+    ip: 10.1.5.80
+    pg_port: 5432

@@ -1,0 +1,8 @@
+---
+# roles/postgres_ai/defaults/main.yml
+
+ai_db_name: ai_db
+ai_db_user: ai_user
+ai_db_password: ai_password
+
+ai_schema: public

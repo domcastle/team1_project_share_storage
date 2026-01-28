@@ -1,7 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: "default"
+  # ✅ 프로젝트용: 단일 Provider만 사용 (폴더/디렉토리 분리 X)
+  # - Grafana UI에서 "General"(기본) 위치에 모두 뜸
+  - name: "project"
     orgId: 1
     folder: ""
     type: file

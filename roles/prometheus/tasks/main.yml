@@ -25,6 +25,7 @@
   loop:
     - "{{ prometheus_conf_dir }}"
     - "{{ prometheus_data_dir }}"
+    - "{{ prometheus_conf_dir }}/rules"
 
 - name: Download prometheus tarball
   get_url:
@@ -57,6 +58,35 @@
     mode: "0644"
   notify: restart prometheus
 
+- name: Deploy pgbackrest alert rules
+  copy:
+    dest: "{{ prometheus_conf_dir }}/rules/pgbackrest_rules.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "0644"
+    content: |
+      groups:
+        - name: pgbackrest
+          rules:
+            - alert: PgBackRestTextfileScriptDown
+              expr: pgbackrest_info_up{stanza="{{ stanza_name | default('pgsql-cluster') }}"} == 0
+              for: 10m
+              labels:
+                severity: critical
+              annotations:
+                summary: "pgBackRest textfile script failed (pgbackrest_info_up=0)"
+                description: "drrepo에서 pgbackrest info 파싱 스크립트가 실패했습니다."
+
+            - alert: PgBackRestBackupStale
+              expr: (time() - pgbackrest_last_success_timestamp{stanza="{{ stanza_name | default('pgsql-cluster') }}"}) > 86400
+              for: 30m
+              labels:
+                severity: warning
+              annotations:
+                summary: "pgBackRest backup is stale (no success in 24h)"
+                description: "마지막 성공 백업이 24시간을 초과했습니다. 백업 스케줄/권한/스토리지 확인 필요."
+  notify: restart prometheus
+  
 - name: Validate prometheus config (promtool)
   command: "{{ prometheus_bin_dir }}/promtool check config {{ prometheus_conf_dir }}/prometheus.yml"
   changed_when: false

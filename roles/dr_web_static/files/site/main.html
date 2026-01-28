@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Justic - Main</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- 로그인 체크 -->
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+    }
+  </script>
+
+  <style>
+    textarea {
+      resize: none;
+      overflow: hidden;
+      line-height: 1.5;
+      max-height: 200px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-center">
+    <p class="guide-text">
+      한 줄의 텍스트로 AI 영상을 생성해보세요.
+    </p>
+
+    <div class="input-box">
+      <textarea
+        id="prompt"
+        placeholder="고양이가 번개를 맞고 사이버 고양이로 진화하는 영상 (자세하게 적을수록 정확도가 올라갑니다.)"
+        rows="1"
+      ></textarea>
+
+      <button id="generateBtn">
+        <span>▶</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 우측 상단 메뉴 -->
+  <div class="top-menu">
+    <div class="menu-btn" id="menuBtn">
+      <span></span>
+    </div>
+
+    <div class="menu-dropdown" id="menuDropdown">
+      <a href="#" id="libraryBtn">영상 라이브러리</a>
+      <a href="#" id="logoutBtn">로그아웃</a>
+    </div>
+  </div>
+
+  <!-- 메뉴 스크립트 -->
+  <script>
+    const menuBtn = document.getElementById("menuBtn");
+    const menuDropdown = document.getElementById("menuDropdown");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const libraryBtn = document.getElementById("libraryBtn");
+
+    menuBtn.addEventListener("click", () => {
+      menuDropdown.classList.toggle("show");
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+    });
+
+    libraryBtn.addEventListener("click", () => {
+      window.location.href = "library.html";
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+        menuDropdown.classList.remove("show");
+      }
+    });
+  </script>
+
+  <!-- 영상 생성 UX 개선 -->
+  <script>
+    const generateBtn = document.getElementById("generateBtn");
+    const promptInput = document.getElementById("prompt");
+
+    function autoResize() {
+      promptInput.style.height = "auto";
+      promptInput.style.height = promptInput.scrollHeight + "px";
+    }
+
+    promptInput.addEventListener("input", autoResize);
+
+    async function generateVideo() {
+      const prompt = promptInput.value.trim();
+      if (!prompt) return;
+
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      try {
+        generateBtn.disabled = true;
+
+        const res = await fetch("/api/video/generate", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ prompt })
+        });
+
+        if (!res.ok) {
+          window.location.href = "loading_error.html";
+          return;
+        }
+
+        const data = await res.json();
+        window.location.href = `loading.html?task_id=${data.task_id}`;
+
+      } catch (err) {
+        console.error(err);
+        window.location.href = "loading_error.html";
+      }
+    }
+
+    // ▶ 버튼
+    generateBtn.addEventListener("click", generateVideo);
+
+    // Enter / Shift+Enter 처리
+    promptInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        generateVideo();
+      }
+    });
+  </script>
+
+</body>
+</html>

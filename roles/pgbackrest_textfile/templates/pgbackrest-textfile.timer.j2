@@ -1,0 +1,10 @@
+[Unit]
+Description=Run pgBackRest textfile generator every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=pgbackrest-textfile.service
+
+[Install]
+WantedBy=timers.target

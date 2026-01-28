@@ -32,12 +32,32 @@
     remote_src: true
   notify: Restart node_exporter
 
+- name: Create textfile collector directory (optional)
+  ansible.builtin.file:
+    path: "{{ node_exporter_textfile_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: node_exporter_textfile_enabled | bool
+
+- name: Build node_exporter ExecStart options
+  set_fact:
+    node_exporter_exec_opts: >-
+      --web.listen-address={{ node_exporter_listen_address }}
+      {% if node_exporter_textfile_enabled | bool %}
+      --collector.textfile.directory={{ node_exporter_textfile_dir }}
+      {% endif %}
+
+
 - name: Install systemd unit file
   ansible.builtin.template:
     src: "node_exporter.service.j2"
     dest: "/etc/systemd/system/node_exporter.service"
     mode: "0644"
-  notify: Restart node_exporter
+  notify: 
+    - Restart node_exporter
+    - daemon-reload
 
 - name: Enable and start node_exporter
   ansible.builtin.systemd:

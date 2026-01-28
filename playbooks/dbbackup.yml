@@ -1,0 +1,8 @@
+
+### 6시간에 한번씩 full backup 실행(수동으로)
+
+- name: Run pgBackRest full backup on repo
+  hosts: dr_repo
+  gather_facts: false
+  roles:
+    - pgbackrest_backup

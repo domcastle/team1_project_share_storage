@@ -46,6 +46,15 @@
     group: "{{ postgres_user }}"
     mode: "0750"
 
+- name: Ensure pgBackRest log directory exists
+  become: true
+  file:
+    path: /var/log/pgbackrest
+    state: directory
+    owner: "{{ postgres_user }}"
+    group: "{{ postgres_user }}"
+    mode: "0750"
+    
 - name: Deploy pgBackRest repo config
   become: true
   template:
@@ -73,3 +82,4 @@
 - name: Show pgBackRest version
   debug:
     msg: "{{ pgbackrest_version_out.stdout }}"
+

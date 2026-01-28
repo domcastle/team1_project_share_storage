@@ -4,23 +4,192 @@
   <meta charset="UTF-8">
   <title>Justic</title>
   <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    /* ===============================
+       타이핑 텍스트 스타일
+    =============================== */
+    .brand-sub {
+      position: absolute;                 /* 🔒 흐름 완전 제거 */
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0;                          /* margin 영향 제거 */
+      white-space: nowrap;                /* 줄바꿈 방지 */
+
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      color: #777;
+      text-transform: uppercase;
+
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+
+    .brand-sub.small {
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      color: #999;
+    }
+
+    .brand-sub.show {
+      opacity: 1;
+    }
+
+    /* ===============================
+       🔒 타이핑 영역 전체 고정
+       (CLS / 흔들림 완전 차단)
+    =============================== */
+    .typing-wrap {
+      position: relative;
+      height: 44px;                      /* 두 줄 높이 고정 */
+      width: 100%;
+      margin-bottom: 6px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 줄별 위치 고정 */
+    #typingMain {
+      top: 0;
+    }
+
+    #typingSub {
+      top: 22px;                         /* 줄 간격 */
+    }
+
+    /* ===============================
+       로고 영상 + 숏츠 로고 래퍼
+    =============================== */
+    .logo-wrapper {
+      position: relative;
+      width: 220px;
+      margin-bottom: 20px;
+    }
+
+    .logo-wrapper video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ===============================
+       YouTube Shorts 로고
+    =============================== */
+    .shorts-logo {
+      position: absolute;
+      top: -18px;                        /* 위로 */
+      right: -42px;                      /* 오른쪽으로 */
+      width: 84px;
+
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    .shorts-logo img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+  </style>
 </head>
 <body>
+
   <div class="center-box">
+
+    <!-- 로고 영상 + 숏츠 로고 -->
+    <div class="logo-wrapper">
+      <video
+        src="/videos/logo1.mp4"
+        autoplay
+        loop
+        muted
+        playsinline
+      ></video>
+
+      <div class="shorts-logo">
+        <img src="/images/YouTube-Shorts-Logo.png" alt="YouTube Shorts">
+      </div>
+    </div>
+
+    <!-- 🔒 타이핑 영역 (완전 고정) -->
+    <div class="typing-wrap">
+      <div class="brand-sub" id="typingMain"></div>
+      <div class="brand-sub small" id="typingSub"></div>
+    </div>
+
     <h1>안녕하세요!</h1>
     <p>무슨 영상을 만들어 드릴까요?</p>
 
-    <a href="http://auth.justic.store:8000/auth/google/login" class="login-btn">
+    <a href="https://auth.justic.store/auth/google/login" class="login-btn">
       Google로 로그인
     </a>
   </div>
 
-  <!-- ✅ 이미 로그인되어 있으면 메인으로 -->
   <script>
+    // 이미 로그인되어 있으면 메인으로
     const token = localStorage.getItem("access_token");
     if (token) {
       window.location.href = "main.html";
     }
+
+    // ===============================
+    // 타이핑 텍스트 설정
+    // ===============================
+    const mainText = "Justic AI Store";
+    const subText  = "숏폼 영상 제작소";
+
+    const mainEl = document.getElementById("typingMain");
+    const subEl  = document.getElementById("typingSub");
+
+    let index = 0;
+    let subIndex = 0;
+    const typingSpeed = 110;
+
+    function typeMain() {
+      if (index === 0) {
+        mainEl.textContent = "";
+        subEl.textContent = "";
+        mainEl.classList.add("show");
+        subEl.classList.remove("show");
+      }
+
+      if (index < mainText.length) {
+        mainEl.textContent += mainText.charAt(index);
+        index++;
+        setTimeout(typeMain, typingSpeed);
+      } else {
+        setTimeout(typeSub, 400);
+      }
+    }
+
+    function typeSub() {
+      subEl.classList.add("show");
+
+      if (subIndex < subText.length) {
+        subEl.textContent += subText.charAt(subIndex);
+        subIndex++;
+        setTimeout(typeSub, typingSpeed - 20);
+      } else {
+        setTimeout(fadeOutAll, 3000);
+      }
+    }
+
+    function fadeOutAll() {
+      mainEl.classList.remove("show");
+      subEl.classList.remove("show");
+
+      setTimeout(() => {
+        index = 0;
+        subIndex = 0;
+        typeMain();
+      }, 1200);
+    }
+
+    setTimeout(typeMain, 500);
   </script>
+
 </body>
 </html>

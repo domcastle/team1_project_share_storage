@@ -1,0 +1,72 @@
+# ============================
+# HTTPS - justic.store
+# ============================
+server {
+    listen 443 ssl;
+    server_name justic.store;
+
+    ssl_certificate     /etc/letsencrypt/live/justic.store/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/justic.store/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+# ============================
+# HTTPS - auth.justic.store
+# ============================
+server {
+    listen 443 ssl;
+    server_name auth.justic.store;
+
+    ssl_certificate     /etc/letsencrypt/live/justic.store/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/justic.store/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+
+# ============================
+# HTTPS - minio.justic.store
+# ============================
+server {
+    listen 443 ssl;
+    server_name minio.justic.store;
+
+    ssl_certificate     /etc/letsencrypt/live/justic.store/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/justic.store/privkey.pem;
+
+    client_max_body_size 0;
+
+    location / {
+        proxy_pass http://10.1.1.50:9001;
+
+        # 🔥 WebSocket 필수
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # 🔥 MinIO Console 인증 필수
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header Cookie $http_cookie;
+
+        # 기본 헤더
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # 안정성
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+}
