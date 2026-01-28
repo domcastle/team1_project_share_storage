@@ -1,0 +1,14 @@
+- name: Baseline (optional)
+  hosts: all
+  become: true
+  roles:
+    - node_exporter
+    - promtail
+
+- name: Monitoring stack
+  hosts: monitoring
+  become: true
+  roles:
+    - prometheus
+    - loki
+    - grafana
